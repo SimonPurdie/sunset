@@ -10,12 +10,12 @@
   - [x] 1.1 Update `pyproject.toml`
   - [x] 1.2 Create project package structure
   - [x] 1.3 Set up test infrastructure
-- [ ] 2. Define Core Data Structures & Interfaces
-  - [ ] 2.1 Create `models/bodies.py`
-  - [ ] 2.2 Create `models/observer.py`
-  - [ ] 2.3 Create `models/atmosphere.py`
-  - [ ] 2.4 Create `models/spectral.py`
-  - [ ] 2.5 Create `models/scene.py`
+- [x] 2. Define Core Data Structures & Interfaces
+  - [x] 2.1 Create `models/bodies.py`
+  - [x] 2.2 Create `models/observer.py`
+  - [x] 2.3 Create `models/atmosphere.py`
+  - [x] 2.4 Create `models/spectral.py`
+  - [x] 2.5 Create `models/scene.py`
 - [ ] 3. Celestial Geometry Resolver
   - [ ] 3.1 Implement `geometry/resolver.py`
   - [ ] 3.2 Use ephemeris data for sun position
