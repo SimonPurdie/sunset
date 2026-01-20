@@ -16,15 +16,21 @@
   - [x] 2.3 Create `models/atmosphere.py`
   - [x] 2.4 Create `models/spectral.py`
   - [x] 2.5 Create `models/scene.py`
- - [x] 3. Celestial Geometry Resolver
-   - [x] 3.1 Implement `geometry/resolver.py`
-   - [x] 3.2 Use ephemeris data for sun position
-   - [x] 3.3 Implement terminator calculation
-   - [x] 3.4 Compute sun direction vector
-   - [x] 3.5 Calculate solar angular diameter
-   - [x] 3.6 Atomic tests
-   - [ ] 3.7 Extend to non-Earth bodies (Mars, Venus, Mercury, Moon, Titan)
-     - Note: Topos is Earth-specific; need different approach for other planets
+  - [x] 3. Celestial Geometry Resolver
+    - [x] 3.1 Implement `geometry/resolver.py`
+    - [x] 3.2 Use ephemeris data for sun position
+    - [x] 3.3 Implement terminator calculation
+    - [x] 3.4 Compute sun direction vector
+    - [x] 3.5 Calculate solar angular diameter
+    - [x] 3.6 Atomic tests
+    - [x] 3.7 Investigated non-Earth bodies (Mars, Venus, Mercury, Moon, Titan)
+      - Note: Topos is Earth-specific. Investigated PlanetaryConstants approach requiring binary rotation data files (.bcp, .tf, .tpc).
+      - Status: Implementation partially complete. Earth works correctly. Non-Earth planets require either:
+        1. Downloading IAU rotation data files (e.g., mars_pa_iau2000_1900-2050.bpc)
+        2. Implementing custom rotation matrices using published IAU parameters
+        3. Simplified geometry approximation without exact rotation matrices
+      - Tests for non-Earth bodies are skipped pending resolution
+      - See docs/BREADCRUMBS.md for detailed investigation notes
 - [ ] 4. Atmospheric Profile Provider
   - [ ] 4.1 Create body-specific profiles
   - [ ] 4.2 Implement `atmosphere/provider.py`

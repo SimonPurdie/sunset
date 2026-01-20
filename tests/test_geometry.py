@@ -17,7 +17,11 @@ def test_solar_elevation_bounds():
 
 def test_solar_elevation_bounds_mars():
     """Test solar elevation bounds for Mars."""
-    pytest.skip("Topos is Earth-specific; other planets need different implementation")
+    pytest.skip(
+        "Skyfield's Topos is Earth-specific. Non-Earth planets require PlanetaryConstants "
+        "with binary rotation data files (.bcp) that need to be downloaded separately. "
+        "Implementation in progress - see docs/BREADCRUMBS.md for details."
+    )
     utc_time = "2026-01-20T12:00:00Z"
     body_id = "mars"
     random_seed = 54321
@@ -119,7 +123,11 @@ def test_body_association():
 
 def test_mars_sunset():
     """Test that Mars sunset can be found."""
-    pytest.skip("Topos is Earth-specific; other planets need different implementation")
+    pytest.skip(
+        "Skyfield's Topos is Earth-specific. Non-Earth planets require PlanetaryConstants "
+        "with binary rotation data files (.bcp) that need to be downloaded separately. "
+        "Implementation in progress - see docs/BREADCRUMBS.md for details."
+    )
     utc_time = "2026-01-20T12:00:00Z"
     body_id = "mars"
     random_seed = 88888
@@ -132,7 +140,11 @@ def test_mars_sunset():
 
 def test_venus_sunset():
     """Test that Venus sunset can be found."""
-    pytest.skip("Topos is Earth-specific; other planets need different implementation")
+    pytest.skip(
+        "Skyfield's Topos is Earth-specific. Non-Earth planets require PlanetaryConstants "
+        "with binary rotation data files (.bcp) that need to be downloaded separately. "
+        "Implementation in progress - see docs/BREADCRUMBS.md for details."
+    )
     utc_time = "2026-01-20T00:00:00Z"
     body_id = "venus"
     random_seed = 99999
@@ -145,7 +157,11 @@ def test_venus_sunset():
 
 def test_mercury_sunset():
     """Test that Mercury sunset can be found."""
-    pytest.skip("Topos is Earth-specific; other planets need different implementation")
+    pytest.skip(
+        "Skyfield's Topos is Earth-specific. Non-Earth planets require PlanetaryConstants "
+        "with binary rotation data files (.bcp) that need to be downloaded separately. "
+        "Implementation in progress - see docs/BREADCRUMBS.md for details."
+    )
     utc_time = "2026-01-20T06:00:00Z"
     body_id = "mercury"
     random_seed = 10101
