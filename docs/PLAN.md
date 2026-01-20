@@ -16,13 +16,15 @@
   - [x] 2.3 Create `models/atmosphere.py`
   - [x] 2.4 Create `models/spectral.py`
   - [x] 2.5 Create `models/scene.py`
-- [ ] 3. Celestial Geometry Resolver
-  - [ ] 3.1 Implement `geometry/resolver.py`
-  - [ ] 3.2 Use ephemeris data for sun position
-  - [ ] 3.3 Implement terminator calculation
-  - [ ] 3.4 Compute sun direction vector
-  - [ ] 3.5 Calculate solar angular diameter
-  - [ ] 3.6 Atomic tests
+ - [x] 3. Celestial Geometry Resolver
+   - [x] 3.1 Implement `geometry/resolver.py`
+   - [x] 3.2 Use ephemeris data for sun position
+   - [x] 3.3 Implement terminator calculation
+   - [x] 3.4 Compute sun direction vector
+   - [x] 3.5 Calculate solar angular diameter
+   - [x] 3.6 Atomic tests
+   - [ ] 3.7 Extend to non-Earth bodies (Mars, Venus, Mercury, Moon, Titan)
+     - Note: Topos is Earth-specific; need different approach for other planets
 - [ ] 4. Atmospheric Profile Provider
   - [ ] 4.1 Create body-specific profiles
   - [ ] 4.2 Implement `atmosphere/provider.py`
