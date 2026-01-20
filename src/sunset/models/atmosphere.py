@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 
 @dataclass
@@ -11,7 +11,7 @@ class AtmosphericProfile:
     density_profile: Optional[Callable[[float], float]] = None
     pressure_profile: Optional[Callable[[float], float]] = None
     refractive_index: float = 1.0
-    absorption_bands: Dict[str, tuple[float, float]] = field(default_factory=dict)
+    absorption_bands: Dict[str, List[tuple[float, float]]] = field(default_factory=dict)
 
 
 @dataclass
@@ -22,15 +22,6 @@ class NullAtmosphere:
 def get_atmosphere(
     body_name: str, altitude_m: float
 ) -> AtmosphericProfile | NullAtmosphere:
-    from .bodies import SOLAR_SYSTEM_BODIES
+    from ..atmosphere.provider import get_body_profile
 
-    body = SOLAR_SYSTEM_BODIES.get(body_name.lower())
-    if body is None:
-        raise ValueError(f"Unknown body: {body_name}")
-
-    if not body.has_atmosphere:
-        return NullAtmosphere(body_name=body.name)
-
-    raise NotImplementedError(
-        f"Atmosphere profiles not yet implemented for {body.name}"
-    )
+    return get_body_profile(body_name, altitude_m)

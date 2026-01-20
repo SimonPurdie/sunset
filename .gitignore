@@ -9,3 +9,9 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Skyfield ephemeris and rotation data files
+*.bsp
+*.tf
+*.tpc
+*.bcp

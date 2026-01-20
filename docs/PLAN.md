@@ -31,13 +31,13 @@
         3. Simplified geometry approximation without exact rotation matrices
       - Tests for non-Earth bodies are skipped pending resolution
       - See docs/BREADCRUMBS.md for detailed investigation notes
-- [ ] 4. Atmospheric Profile Provider
-  - [ ] 4.1 Create body-specific profiles
-  - [ ] 4.2 Implement `atmosphere/provider.py`
-  - [ ] 4.3 Implement Rayleigh scattering coefficients
-  - [ ] 4.4 Implement barometric formula
-  - [ ] 4.5 Store refractive index data
-  - [ ] 4.6 Atomic tests
+- [x] 4. Atmospheric Profile Provider
+  - [x] 4.1 Create body-specific profiles
+  - [x] 4.2 Implement `atmosphere/provider.py`
+  - [x] 4.3 Implement Rayleigh scattering coefficients
+  - [x] 4.4 Implement barometric formula
+  - [x] 4.5 Store refractive index data
+  - [x] 4.6 Atomic tests
 - [ ] 5. Visibility Elevation Resolver
   - [ ] 5.1 Implement `visibility/resolver.py`
   - [ ] 5.2 Implement optical depth calculation

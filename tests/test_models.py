@@ -63,12 +63,22 @@ def test_null_atmosphere_for_airless_bodies():
     assert moon_atmosphere.body_name == "Moon"
 
 
-def test_atmosphere_not_yet_implemented_for_planets():
-    with pytest.raises(NotImplementedError):
-        get_atmosphere("earth", altitude_m=0)
+def test_atmosphere_implemented_for_planets():
+    earth_atmosphere = get_atmosphere("earth", altitude_m=0)
+    assert isinstance(earth_atmosphere, AtmosphericProfile)
+    assert earth_atmosphere.body_name == "Earth"
 
-    with pytest.raises(NotImplementedError):
-        get_atmosphere("mars", altitude_m=0)
+    mars_atmosphere = get_atmosphere("mars", altitude_m=0)
+    assert isinstance(mars_atmosphere, AtmosphericProfile)
+    assert mars_atmosphere.body_name == "Mars"
+
+    venus_atmosphere = get_atmosphere("venus", altitude_m=0)
+    assert isinstance(venus_atmosphere, AtmosphericProfile)
+    assert venus_atmosphere.body_name == "Venus"
+
+    titan_atmosphere = get_atmosphere("titan", altitude_m=0)
+    assert isinstance(titan_atmosphere, AtmosphericProfile)
+    assert titan_atmosphere.body_name == "Titan"
 
 
 def test_spectral_radiance_validation():
