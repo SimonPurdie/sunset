@@ -6,10 +6,10 @@
 
 ## Checklist
 
-- [ ] 1. Project Setup & Dependencies
-  - [ ] 1.1 Update `pyproject.toml`
-  - [ ] 1.2 Create project package structure
-  - [ ] 1.3 Set up test infrastructure
+- [x] 1. Project Setup & Dependencies
+  - [x] 1.1 Update `pyproject.toml`
+  - [x] 1.2 Create project package structure
+  - [x] 1.3 Set up test infrastructure
 - [ ] 2. Define Core Data Structures & Interfaces
   - [ ] 2.1 Create `models/bodies.py`
   - [ ] 2.2 Create `models/observer.py`
