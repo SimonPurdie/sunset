@@ -65,11 +65,11 @@
   - [x] 8.5 Implement ground/horizon rendering
   - [x] 8.6 Ensure resolution ≥ 1024 × 512
   - [x] 8.7 Atomic tests
-- [ ] 9. Caption Generator
-  - [ ] 9.1 Implement `caption/generator.py`
-  - [ ] 9.2 Add required metadata content
-  - [ ] 9.3 Ensure no speculative claims
-  - [ ] 9.4 Atomic tests
+ - [x] 9. Caption Generator
+   - [x] 9.1 Implement `caption/generator.py`
+   - [x] 9.2 Add required metadata content
+   - [x] 9.3 Ensure no speculative claims
+   - [x] 9.4 Atomic tests
 - [ ] 10. PNG Metadata Embedding
   - [ ] 10.1 Implement `metadata/embedder.py`
   - [ ] 10.2 Add required metadata keys
