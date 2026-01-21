@@ -1,436 +1,86 @@
-# Implementation Plan: It's Always Sunset Somewhere
+# It's Always Sunset Somewhere - Implementation Roadmap
 
-> **Core Objective**: Produce a deterministic system that renders physically plausible sunset scenes occurring somewhere in the Solar System at a given UTC time, using real celestial mechanics and physically grounded atmospheric optics — **without GPU acceleration** *(SPEC §1)*
+## Living Document
 
----
-
-## Checklist
-
-- [x] 1. Project Setup & Dependencies
-  - [x] 1.1 Update `pyproject.toml`
-  - [x] 1.2 Create project package structure
-  - [x] 1.3 Set up test infrastructure
-- [x] 2. Define Core Data Structures & Interfaces
-  - [x] 2.1 Create `models/bodies.py`
-  - [x] 2.2 Create `models/observer.py`
-  - [x] 2.3 Create `models/atmosphere.py`
-  - [x] 2.4 Create `models/spectral.py`
-  - [x] 2.5 Create `models/scene.py`
-- [x] 3. Celestial Geometry Resolver
-  - [x] 3.1 Implement `geometry/resolver.py`
-  - [x] 3.2 Use ephemeris data for sun position
-  - [x] 3.3 Implement terminator calculation
-  - [x] 3.4 Compute sun direction vector
-  - [x] 3.5 Calculate solar angular diameter
-  - [x] 3.6 Atomic tests
-  - [x] 3.7 Implemented non-Earth planetary geometry resolution (Mars, Venus, Mercury, Moon)
-    - Solution: Direct geometric approach that samples points on sphere and computes solar elevation using dot products
-    - Avoids need for Topos or PlanetaryConstants rotation data
-    - Note: Latitude/longitude computed in ICRS-aligned frame rather than actual body-fixed coordinates
-    - [x] 3.8 Titan support using orbital mechanics calculation
-      - Uses Saturn's position from de440.bsp
-      - Computes Titan's position using Keplerian orbital elements and 3D rotation matrices
-      - See docs/BREADCRUMBS.md for details
-- [x] 4. Atmospheric Profile Provider
-  - [x] 4.1 Create body-specific profiles
-  - [x] 4.2 Implement `atmosphere/provider.py`
-  - [x] 4.3 Implement Rayleigh scattering coefficients
-  - [x] 4.4 Implement barometric formula
-  - [x] 4.5 Store refractive index data
-  - [x] 4.6 Atomic tests
- - [x] 5. Visibility Elevation Resolver
-   - [x] 5.1 Implement `visibility/resolver.py`
-   - [x] 5.2 Implement optical depth calculation
-   - [x] 5.3 Implement altitude iteration
-   - [x] 5.4 Implement body rejection logic
-   - [x] 5.5 Atomic tests
-- [x] 6. Optical Path Integrator
-    - [x] 6.1 Implement `optics/integrator.py`
-    - [x] 6.2 Implement Rayleigh scattering physics
-    - [x] 6.3 Implement optical path integration
-    - [x] 6.4 Implement Mie scattering
-    - [x] 6.5 Compute skylight contribution
-    - [x] 6.6 Atomic tests
- - [x] 7. Spectral → Color Pipeline
-   - [x] 7.1 Implement spectral to XYZ conversion
-   - [x] 7.2 Implement exposure and tone mapping
-   - [x] 7.3 Implement XYZ to sRGB encoding
-   - [x] 7.4 Implement 16-bit output support
-   - [x] 7.5 Atomic tests
-- [x] 8. Software Renderer
-  - [x] 8.1 Implement CPU-only rendering engine
-  - [x] 8.2 Implement horizon geometry
-  - [x] 8.3 Implement sun rendering
-  - [x] 8.4 Implement sky rendering
-  - [x] 8.5 Implement ground/horizon rendering
-  - [x] 8.6 Ensure resolution ≥ 1024 × 512
-  - [x] 8.7 Atomic tests
- - [x] 9. Caption Generator
-   - [x] 9.1 Implement `caption/generator.py`
-   - [x] 9.2 Add required metadata content
-   - [x] 9.3 Ensure no speculative claims
-   - [x] 9.4 Atomic tests
- - [x] 10. PNG Metadata Embedding
-   - [x] 10.1 Implement `metadata/embedder.py`
-   - [x] 10.2 Add required metadata keys
-   - [x] 10.3 Implement 8-bit PNG writing with Floyd-Steinberg dithering (16-bit per channel not directly supported by Pillow fromarray)
-   - [x] 10.4 Atomic tests
- - [x] 11. CLI Entry Point & Integration
-   - [x] 11.1 Implement CLI in `main.py`
-   - [x] 11.2 Orchestrate full pipeline
-   - [x] 11.3 Implement body iteration
-   - [x] 11.4 Error handling and validation
- - [x] 12. Determinism & Reproducibility Verification
-   - [x] 12.1 Implement reproducibility tests
-   - [x] 12.2 Ensure seed-controlled randomness
-   - [x] 12.3 Document numeric tolerance
-   - [x] 12.4 Atomic tests
-  - [x] 13. End-to-End Testing & Validation
-     - [x] 13.1 Create integration test suite
-     - [x] 13.2 Contract validation
-     - [x] 13.3 Visual validation
-     - [x] 13.4 Cross-body validation
-     - [x] 13.5 Performance benchmarking
+This document tracks implementation tasks resulting from testing, bug fixes, and enhancements beyond the original SPEC.md. Tasks are prioritized by criticality. Keep this document current as you perform tasks from it.
 
 ---
 
-## Implementation Plan
+## Priority 0: Critical Issues (Blockers)
 
-### 1. Project Setup & Dependencies
-*Source: SPEC §1, §6, pyproject.toml*
+These issues prevent the system from meeting the SPEC.md contract or user requirements.
 
-- **1.1** Update `pyproject.toml` with required dependencies:
-  - Numerical computing: `numpy`
-  - PNG handling with metadata: `Pillow` (or `pypng` for 16-bit)
-  - Celestial mechanics: `astropy` or `skyfield` (ephemeris calculations)
-  - Color science: `colour-science` (spectral to sRGB conversion, CIE functions)
-- **1.2** Create project package structure under `src/sunset/`:
-  ```
-  src/sunset/
-  ├── __init__.py
-  ├── main.py              # CLI entry point
-  ├── geometry/            # Celestial Geometry Resolver
-  ├── atmosphere/          # Atmospheric Profile Provider
-  ├── visibility/          # Visibility Elevation Resolver
-  ├── optics/              # Optical Path Integrator
-  ├── color/               # Spectral → Color Pipeline
-  ├── renderer/            # Software Renderer
-  ├── caption/             # Caption Generator
-  ├── metadata/            # PNG Metadata Embedding
-  └── models/              # Shared data models & types
-  ```
-- **1.3** Set up test infrastructure in `tests/` with pytest
+### Output Filename Management
+- **Change:** Save output images to `output/YYYYMMDD-HHMMSS-planetname.png` instead of overwriting `sunset.png`
+- **Example:** `output/20260121-143052-mars.png`
+- **Rationale:** Preserve previous renders for comparison; easier inspection and debugging
+
+### Sun Rendering Bug
+- **Issue:** Sun appears as a diffuse black circle in the top-right corner; should be centered horizontally and intersect the horizon
+- **Root cause unknown; investigate via tests to determine:**
+  - Actual sun position in image coordinates
+  - Color values from optics pipeline for sun pixels
+  - Sun_mask correctness
+  - Coordinate system alignment between sun direction and viewing vectors
+
+### Sky Gradient Visibility
+- **Issue:** Sky appears as a single hue; SPEC.md requires "vertical luminance and chromatic gradient"
+- **Investigate:** Whether sky brightness factors are producing visible variation across the image
 
 ---
 
-### 2. Define Core Data Structures & Interfaces
-*Source: SPEC §5 (all subsections), §2*
+## Priority 1: Important Improvements (Should Fix)
 
-- **2.1** Create `models/bodies.py` — Solar System body definitions:
-  - Body name, radius, atmosphere presence flag
-  - Reference surface altitude definition
-- **2.2** Create `models/observer.py` — Observer location dataclass:
-  - Latitude, longitude, altitude, body reference
-  - Solar elevation angle, sun direction vector
-  - Solar angular diameter
-  *(SPEC §5.1 outputs)*
-- **2.3** Create `models/atmosphere.py` — Atmospheric profile dataclass:
-  - Gas composition dict (fractions summing to 1.0)
-  - Rayleigh scattering coefficient (wavelength-dependent function)
-  - Optional Mie scattering parameters
-  - Density vs altitude profile
-  - Pressure vs altitude profile
-  - Refractive index
-  - Absorption bands
-  *(SPEC §5.2 outputs)*
-- **2.4** Create `models/spectral.py` — Spectral radiance representation:
-  - Wavelength array and corresponding radiance values
-  - Skylight contribution spectrum
-  *(SPEC §5.4 outputs)*
-- **2.5** Create `models/scene.py` — Complete scene metadata:
-  - All fields required for PNG metadata embedding
-  - `body`, `utc_time`, `latitude`, `longitude`, `altitude_m`, `random_seed`, `renderer_id`
-  *(SPEC §4)*
+### CLI/UX Enhancements
+
+**Informative Output Before Rendering**
+- Print body name being rendered before rendering starts
+- Print relevant metadata (UTC time, location coordinates, altitude, solar elevation)
+- Format should be clear and human-readable
+
+**Progress Indication**
+- Display a terminal progress bar during rendering
+- Show percentage complete or render stage information
+
+**Better Error Reporting**
+- Provide actionable guidance in error messages
+- Include context (what was being attempted when error occurred)
+- Suggest next steps or possible fixes
+
+**Suppress Colour Library Warnings**
+- Suppress warnings about missing SciPy and Matplotlib dependencies
+- Do not install these libraries unnecessarily
+- Use warning filters or configure colour library to suppress these specific warnings
 
 ---
 
-### 3. Celestial Geometry Resolver
-*Source: SPEC §5.1*
+## Priority 2: Nice-to-Have Features
 
-- **3.1** Implement `geometry/resolver.py`:
-  - **Input**: UTC timestamp, body identifier, optional random seed
-  - **Output**: Observer location with solar elevation ∈ [-1.5°, +0.5°]
-- **3.2** Use ephemeris data (via `astropy`/`skyfield`) to compute:
-  - Sun position relative to each body at given UTC
-  - Body rotation to determine latitude/longitude where sun is at horizon
-- **3.3** Implement terminator calculation:
-  - Find the band of lat/lon coordinates where solar elevation is within [-1.5°, +0.5°]
-  - Use random seed to select a specific point on this band
-- **3.4** Compute sun direction vector in body-fixed coordinates
-- **3.5** Calculate solar angular diameter based on body-sun distance
-- **3.6** Tests *(SPEC §5.1 Atomic Tests)*:
-  - `test_solar_elevation_bounds` — Returned solar elevation ∈ [-1.5°, +0.5°]
-  - `test_coordinates_valid` — Lat/lon valid for body
-  - `test_determinism` — Same seed → same result
+### Camera/Viewing Adjustments
+- Adjust camera angle so horizon appears at ~15% of image height (currently at 50%)
+- Expose camera angle/viewing direction as CLI parameters
+
+### Visual Quality Enhancements
+- Sun disc improvements: limb darkening, atmospheric glow/halo effects
+- Stars visible in darker sky regions
+- Ground/terrain representation instead of flat black horizon
+
+### Debugging/Diagnostics
+- Intermediate visualization mode: spectral data, direction vectors, masks
+- Verbose flag for detailed internal state output
 
 ---
 
-### 4. Atmospheric Profile Provider
-*Source: SPEC §5.2*
+## Testing Strategy for Sun Issue
 
-- **4.1** Create `atmosphere/profiles/` directory with body-specific profiles:
-  - `earth.py` — N₂/O₂ atmosphere, standard density profile
-  - `mars.py` — CO₂ atmosphere, thin
-  - `venus.py` — Dense CO₂ atmosphere with cloud layers
-  - `titan.py` — N₂/CH₄ atmosphere, thick haze
-  - `airless.py` — Null atmosphere (Moon, Mercury, asteroids)
-- **4.2** Implement `atmosphere/provider.py`:
-  - **Input**: Body identifier, altitude
-  - **Output**: Full atmospheric profile dataclass
-- **4.3** Implement Rayleigh scattering coefficient calculation:
-  - λ⁻⁴ wavelength dependence for each gas species *(SPEC §5.4)*
-  - King correction factors for molecular anisotropy
-- **4.4** Implement barometric formula for density/pressure vs altitude
-- **4.5** Store refractive index data (for atmospheric refraction effects)
-- **4.6** Tests *(SPEC §5.2 Atomic Tests)*:
-  - `test_density_monotonic` — Density decreases with altitude
-  - `test_pressure_monotonic` — Pressure decreases with altitude
-  - `test_earth_matches_published` — Earth profile within published ranges
-  - `test_mars_matches_published` — Mars profile within published ranges
-  - `test_venus_matches_published` — Venus profile within published ranges
-  - `test_titan_matches_published` — Titan profile within published ranges
-  - `test_airless_null` — Airless bodies return null atmosphere
+**Approach:** Test-driven investigation rather than prescriptive test specification
 
----
+**Goal:** Builders should write tests to discover and pinpoint the sun rendering problem
 
-### 5. Visibility Elevation Resolver
-*Source: SPEC §5.3*
+**Suggested areas for investigation (not prescriptive):**
+- Where is the sun actually being positioned in the rendered image?
+- What color values are being computed for sun pixels?
+- Is the sun_mask correctly identifying which pixels should contain the sun?
+- Are there coordinate system mismatches between sun direction vector and viewing direction map?
 
-- **5.1** Implement `visibility/resolver.py`:
-  - **Input**: Atmospheric profile, observer location
-  - **Output**: Final observer altitude, justification string
-- **5.2** Implement optical depth calculation toward sun:
-  - Integrate atmospheric density along line-of-sight to sun
-  - Calculate total optical depth for visibility threshold check
-- **5.3** Implement altitude iteration:
-  - If optical depth > threshold, increase altitude
-  - Binary search or iterative refinement for efficiency
-- **5.4** Implement body rejection logic:
-  - If no altitude satisfies visibility, reject body for this run
-- **5.5** Tests *(SPEC §5.3 Atomic Tests)*:
-  - `test_venus_surface_rejected` — Venus surface always rejected
-  - `test_venus_upper_atmo_accepted` — Venus upper atmosphere accepted
-  - `test_earth_surface_ok` — Earth never requires altitude change
-  - `test_airless_surface_ok` — Airless bodies always accept surface
-
----
-
-### 6. Optical Path Integrator
-*Source: SPEC §5.4, §7*
-
-- **6.1** Implement `optics/integrator.py`:
-  - **Input**: Atmospheric profile, sun direction, observer altitude
-  - **Output**: Spectral radiance, skylight contribution spectrum
-- **6.2** Implement Rayleigh scattering physics *(SPEC §7 — NOT hardcoded)*:
-  - Scattering cross-section σ(λ) ∝ λ⁻⁴
-  - Phase function for Rayleigh scattering (1 + cos²θ)
-  - Compute in-scattering contributions
-- **6.3** Implement optical path integration:
-  - Numerical integration along observer's viewing ray
-  - Accumulate attenuation and scattering contributions
-  - Multiple wavelength channels (e.g., 380nm–780nm in steps)
-- **6.4** Implement Mie scattering (when aerosols present):
-  - Particle size distribution effects
-  - Henyey-Greenstein phase function approximation
-- **6.5** Compute skylight contribution:
-  - Single-scattering approximation (or multi-scattering if needed)
-  - Hemisphere integration for sky brightness
-- **6.6** Tests *(SPEC §5.4 Atomic Tests)*:
-  - `test_rayleigh_wavelength_scaling` — Scattering ∝ 1/λ⁴
-  - `test_short_wavelength_skylight` — Blue dominates skylight at high elevation
-  - `test_optical_depth_increases_horizon` — Optical depth increases as sun → horizon
-  - `test_short_wavelength_attenuation` — Blue attenuates faster in thick atmospheres
-  - `test_airless_zero_skylight` — Airless bodies produce zero skylight
-  - `test_no_negative_radiance` — All radiance values ≥ 0
-
----
-
-### 7. Spectral → Color Pipeline
-*Source: SPEC §5.5, §3*
-
-- **7.1** Implement `color/spectral.py` — spectral to XYZ conversion:
-  - CIE 1931 2° standard observer color matching functions
-  - Integration of spectral radiance × CMF
-- **7.2** Implement `color/tonemapping.py` — exposure and tone mapping:
-  - Automatic exposure based on scene luminance
-  - Tone mapping operator (Reinhard or ACES) preserving hue
-- **7.3** Implement `color/encoding.py` — XYZ to sRGB:
-  - XYZ → linear sRGB matrix transform
-  - Gamut mapping for out-of-gamut colors
-  - sRGB gamma encoding (linear → sRGB transfer function)
-- **7.4** Implement 16-bit output support *(SPEC §3)*:
-  - Linear light internal representation
-  - 16-bit per channel PNG output (preferred)
-  - 8-bit dithering fallback if needed
-- **7.5** Tests *(SPEC §5.5 Atomic Tests)*:
-  - `test_energy_luminance` — More energy → higher luminance
-  - `test_hue_ordering` — Wavelength dominance preserves hue
-  - `test_zero_radiance_black` — Zero radiance → black
-  - `test_tonemapping_hue_preservation` — Tone mapping preserves hue ordering
-
----
-
-### 8. Software Renderer
-*Source: SPEC §5.6, §3, §7*
-
-- **8.1** Implement `renderer/engine.py` — CPU-only rendering engine:
-  - **Constraint**: No GPU, OpenGL, Vulkan, compute shaders *(SPEC §5.6)*
-  - Deterministic floating-point behavior
-- **8.2** Implement horizon geometry:
-  - Curved horizon based on body radius and observer altitude
-  - Horizon line calculation (geometric horizon angle)
-- **8.3** Implement sun rendering:
-  - Solar disc with correct angular diameter from Geometry Resolver
-  - Sun position intersecting/within ±1.5° of horizon *(SPEC §3)*
-  - Limb darkening (optional enhancement)
-- **8.4** Implement sky rendering:
-  - For each pixel above horizon, compute viewing ray direction
-  - Call Optical Path Integrator for spectral radiance
-  - Convert to sRGB via Spectral → Color Pipeline
-- **8.5** Implement ground/horizon rendering:
-  - Simple dark ground below horizon (color derived from atmosphere)
-  - No hardcoded colors *(SPEC §7)*
-- **8.6** Ensure resolution ≥ 1024 × 512 *(SPEC §3)*
-- **8.7** Tests *(SPEC §5.6 Atomic Tests)*:
-  - `test_horizon_present` — Horizon visible and horizontal
-  - `test_sun_intersects_horizon` — Sun within tolerance of horizon
-  - `test_no_color_banding` — No visible banding at 16-bit depth
-
----
-
-### 9. Caption Generator
-*Source: SPEC §5.7*
-
-- **9.1** Implement `caption/generator.py`:
-  - **Input**: Scene metadata dataclass
-  - **Output**: Human-readable caption string
-- **9.2** Required content from metadata only:
-  - Body name
-  - Location (lat, lon) and altitude
-  - UTC time
-  - Atmospheric explanation (or explicit absence for airless bodies)
-- **9.3** No speculative or fictional claims *(SPEC §5.7)*
-- **9.4** Tests *(SPEC §5.7 Atomic Tests)*:
-  - `test_altitude_mentioned` — Mentions altitude if not surface
-  - `test_no_atmosphere_mentioned` — Mentions lack of atmosphere if applicable
-  - `test_no_speculation` — No speculative/fictional claims
-
----
-
-### 10. PNG Metadata Embedding
-*Source: SPEC §4, §2*
-
-- **10.1** Implement `metadata/embedder.py`:
-  - Write PNG text chunks with required fields
-  - Validate metadata consistency with image content
-- **10.2** Required metadata keys:
-  - `body`: Solar System body name
-  - `utc_time`: ISO-8601 UTC timestamp
-  - `latitude`: degrees
-  - `longitude`: degrees
-  - `altitude_m`: meters above reference surface
-  - `random_seed`: integer or hash
-  - `renderer_id`: version or commit hash
-- **10.3** Implement 16-bit PNG writing with embedded metadata
-- **10.4** Tests:
-  - `test_metadata_present` — All required fields present in PNG
-  - `test_metadata_parseable` — Metadata values are parseable
-  - `test_metadata_consistent` — Metadata matches rendered scene
-
----
-
-### 11. CLI Entry Point & Integration
-*Source: SPEC §2, src/sunset/main.py*
-
-- **11.1** Implement CLI in `main.py`:
-  - Arguments: `--utc-time`, `--body` (optional), `--seed` (optional), `--output`
-  - Default behavior: auto-select body with visible sunset
-- **11.2** Orchestrate full pipeline:
-  1. Parse inputs and initialize random seed
-  2. Call Celestial Geometry Resolver to find sunset location
-  3. Call Atmospheric Profile Provider
-  4. Call Visibility Elevation Resolver
-  5. Call Optical Path Integrator
-  6. Call Software Renderer to produce image
-  7. Call Caption Generator
-  8. Call PNG Metadata Embedder
-  9. Write output file
-- **11.3** Implement body iteration:
-  - If a body is rejected (no visible sunset), try next body
-  - Seed-controlled ordering of body selection
-- **11.4** Error handling and validation:
-  - Validate output meets contract *(SPEC §2)*
-  - Return non-zero exit code on failure
-
----
-
-### 12. Determinism & Reproducibility Verification
-*Source: SPEC §6*
-
-- **12.1** Implement reproducibility tests:
-  - Same inputs → identical PNG output
-  - ByteCompare verification
-- **12.2** Ensure all randomness is seed-controlled:
-  - Audit all random number usage
-  - Numpy random state management
-- **12.3** Document numeric tolerance if any floating-point variance is allowed
-- **12.4** Tests:
-  - `test_deterministic_output` — Run twice with same inputs, compare bytes
-  - `test_seed_affects_location` — Different seeds produce different locations
-  - `test_seed_preserved_metadata` — Seed recorded in PNG metadata
-
----
-
-### 13. End-to-End Testing & Validation
-*Source: SPEC §8, §2, §7*
-
-- **13.1** Create integration test suite:
-  - Full pipeline execution for each supported body
-  - Verify output PNG meets all contracts
-- **13.2** Contract validation:
-  - PNG format, lossless *(SPEC §3)*
-  - Resolution ≥ 1024 × 512 *(SPEC §3)*
-  - Sun within ±1.5° of horizon *(SPEC §3)*
-  - All required metadata present *(SPEC §4)*
-- **13.3** Visual validation (manual + automated):
-  - No hardcoded color gradients *(SPEC §7)*
-  - Rayleigh scattering not approximated *(SPEC §7)*
-  - Physics-derived sky colors
-- **13.4** Cross-body validation:
-  - Earth sunsets match "golden hour" expectations
-  - Mars sunsets have blue hues near sun (known phenomenon)
-  - Airless bodies have black sky with sun disc only
-- **13.5** Performance benchmarking:
-  - Ensure reasonable render time on CPU
-  - Memory usage within practical limits
-
----
-
-## Dependencies Summary
-
-| Package | Purpose |
-|---------|---------|
-| `numpy` | Numerical arrays, integration |
-| `Pillow` or `pypng` | PNG I/O with 16-bit support |
-| `astropy` or `skyfield` | Ephemeris, celestial mechanics |
-| `colour-science` | Spectral→XYZ→sRGB, CIE CMFs |
-| `pytest` | Testing framework |
-
----
-
-## Notes
-
-- All components are independently replaceable and testable *(SPEC §5)*
-- No GPU acceleration — pure CPU rendering *(SPEC §5.6)*
-- No hardcoded colors — all derived from physics *(SPEC §7)*
-- Determinism is mandatory *(SPEC §6)*
+**Guidance:** Let builders determine appropriate tests based on what they uncover during investigation
