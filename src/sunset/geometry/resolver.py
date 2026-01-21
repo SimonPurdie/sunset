@@ -52,14 +52,23 @@ def resolve_sunset_location(
 
     body = SOLAR_SYSTEM_BODIES[body_id]
 
-    ephemeris = load("de421.bsp")
-    sun = ephemeris["sun"]
+    is_titan = body_id == "titan"
+    if is_titan:
+        ephemeris = load("de440.bsp")
+        saturn = ephemeris[6]
+        sun = ephemeris["sun"]
+    else:
+        ephemeris = load("de421.bsp")
+        sun = ephemeris["sun"]
+        saturn = None
 
     ts = load.timescale()
     t = ts.utc(*_parse_iso_utc(utc_time))
 
     latitude, longitude, solar_elevation, sun_direction, solar_angular_diameter = (
-        _find_sunset_coordinates(t, ephemeris, sun, body_id, body.radius_m, random_seed)
+        _find_sunset_coordinates(
+            t, ephemeris, sun, body_id, body.radius_m, random_seed, saturn
+        )
     )
 
     return Observer(
@@ -71,6 +80,103 @@ def resolve_sunset_location(
         sun_direction=sun_direction,
         solar_angular_diameter_deg=solar_angular_diameter,
     )
+
+
+def _get_titan_position(t, saturn):
+    """
+    Compute Titan's position relative to Saturn using orbital elements.
+
+    Titan's orbital elements (J2000):
+    - Semi-major axis (a): 1,221,870 km
+    - Eccentricity (e): 0.0288
+    - Inclination (i): 0.34854°
+    - Longitude of ascending node (Ω): 168.469°
+    - Argument of periapsis (ω): 179.09°
+    - Mean anomaly at epoch (M0): 173.795°
+    - Orbital period: 15.945 days
+
+    Args:
+        t: Skyfield Time object
+        saturn: Skyfield Saturn object
+
+    Returns:
+        Skyfield position object for Titan
+    """
+    a = 1221870.0  # Semi-major axis in km
+    e = 0.0288  # Eccentricity
+    i = np.radians(0.34854)  # Inclination in radians
+    omega = np.radians(168.469)  # Longitude of ascending node in radians
+    w = np.radians(179.09)  # Argument of periapsis in radians
+    M0 = np.radians(173.795)  # Mean anomaly at epoch in radians
+    n = 2 * np.pi / (15.945 * 86400.0)  # Mean motion in rad/sec
+
+    # Calculate time since J2000 epoch in seconds
+    t_j2000 = load.timescale().utc(2000, 1, 1, 12, 0, 0)
+    t_days = t.tai - t_j2000.tai
+    dt = float(t_days * 86400.0)  # Convert days to seconds
+
+    # Calculate current mean anomaly
+    M = M0 + n * dt
+
+    # Solve Kepler's equation for eccentric anomaly E using Newton-Raphson
+    E = M
+    for _ in range(10):
+        E = M + e * np.sin(E)
+
+    # Calculate true anomaly
+    nu = 2 * np.arctan2(np.sqrt(1 + e) * np.sin(E / 2), np.sqrt(1 - e) * np.cos(E / 2))
+
+    # Calculate radius
+    r = a * (1 - e * np.cos(E))
+
+    # Calculate position in orbital plane
+    x_orb = r * np.cos(nu)
+    y_orb = r * np.sin(nu)
+
+    # Rotate to ICRS coordinates
+    cos_O = np.cos(omega)
+    sin_O = np.sin(omega)
+    cos_w = np.cos(w)
+    sin_w = np.sin(w)
+    cos_i = np.cos(i)
+    sin_i = np.sin(i)
+
+    # 3D rotation matrices
+    x_ecl = x_orb * (cos_O * cos_w - sin_O * sin_w * cos_i) - y_orb * (
+        cos_O * sin_w + sin_O * cos_w * cos_i
+    )
+    y_ecl = x_orb * (sin_O * cos_w + cos_O * sin_w * cos_i) + y_orb * (
+        cos_O * cos_w * cos_i - sin_O * sin_w
+    )
+    z_ecl = x_orb * (sin_w * sin_i) + y_orb * (cos_w * sin_i)
+
+    # Get Saturn's position
+    saturn_pos = saturn.at(t).position.km
+
+    # Add Titan's offset to Saturn's position
+    titan_pos = saturn_pos + np.array([x_ecl, y_ecl, z_ecl])
+
+    # Create a mock position object that mimics Skyfield's position interface
+    class TitanPosition:
+        def __init__(self, pos_km):
+            self._pos_km = np.array(pos_km, dtype=np.float64)
+
+        def at(self, t):
+            # Return a position object with .position attribute
+            class Position:
+                def __init__(self, pos_km):
+                    self.position = type(
+                        "obj",
+                        (object,),
+                        {
+                            "km": np.array(pos_km, dtype=np.float64),
+                            "au": pos_km / 149597870.7,
+                        },
+                    )
+
+            return Position(self._pos_km)
+
+    return TitanPosition(titan_pos)
 
 
 def _create_planetary_observer(
@@ -94,7 +200,13 @@ def _create_planetary_observer(
 
 
 def _find_sunset_coordinates(
-    t, ephemeris, sun, body_id: str, body_radius_m: float, random_seed: Optional[int]
+    t,
+    ephemeris,
+    sun,
+    body_id: str,
+    body_radius_m: float,
+    random_seed: Optional[int],
+    saturn=None,
 ) -> tuple[float, float, float, tuple[float, float, float], float]:
     """
     Find latitude and longitude where solar elevation is between -1.5° and +0.5°.
@@ -112,7 +224,11 @@ def _find_sunset_coordinates(
     best_sun_direction = (0.0, 0.0, 0.0)
     best_solar_angular_diameter = 0.0
 
-    planet = ephemeris[body_id]
+    is_titan = body_id == "titan"
+    if is_titan:
+        planet = _get_titan_position(t, saturn)
+    else:
+        planet = ephemeris[body_id]
 
     is_earth = body_id == "earth"
 

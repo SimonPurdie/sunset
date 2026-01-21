@@ -16,18 +16,20 @@
   - [x] 2.3 Create `models/atmosphere.py`
   - [x] 2.4 Create `models/spectral.py`
   - [x] 2.5 Create `models/scene.py`
-  - [x] 3. Celestial Geometry Resolver
-    - [x] 3.1 Implement `geometry/resolver.py`
-    - [x] 3.2 Use ephemeris data for sun position
-    - [x] 3.3 Implement terminator calculation
-    - [x] 3.4 Compute sun direction vector
-    - [x] 3.5 Calculate solar angular diameter
-    - [x] 3.6 Atomic tests
-    - [x] 3.7 Implemented non-Earth planetary geometry resolution (Mars, Venus, Mercury, Moon)
-      - Solution: Direct geometric approach that samples points on sphere and computes solar elevation using dot products
-      - Avoids need for Topos or PlanetaryConstants rotation data
-      - Note: Latitude/longitude computed in ICRS-aligned frame rather than actual body-fixed coordinates
-      - Titan not supported (requires de440.bsp or custom ephemeris kernel)
+- [x] 3. Celestial Geometry Resolver
+  - [x] 3.1 Implement `geometry/resolver.py`
+  - [x] 3.2 Use ephemeris data for sun position
+  - [x] 3.3 Implement terminator calculation
+  - [x] 3.4 Compute sun direction vector
+  - [x] 3.5 Calculate solar angular diameter
+  - [x] 3.6 Atomic tests
+  - [x] 3.7 Implemented non-Earth planetary geometry resolution (Mars, Venus, Mercury, Moon)
+    - Solution: Direct geometric approach that samples points on sphere and computes solar elevation using dot products
+    - Avoids need for Topos or PlanetaryConstants rotation data
+    - Note: Latitude/longitude computed in ICRS-aligned frame rather than actual body-fixed coordinates
+    - [x] 3.8 Titan support using orbital mechanics calculation
+      - Uses Saturn's position from de440.bsp
+      - Computes Titan's position using Keplerian orbital elements and 3D rotation matrices
       - See docs/BREADCRUMBS.md for details
 - [x] 4. Atmospheric Profile Provider
   - [x] 4.1 Create body-specific profiles

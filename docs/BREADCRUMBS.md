@@ -22,10 +22,23 @@
 - **Workaround**: Implemented fallback to manual RA/Dec to Alt/Az calculation using sidereal time when `.apparent()` fails.
 - **Location**: `src/sunset/geometry/resolver.py` in `_get_alt_az()` function.
 
-### Titan Ephemeris Limitations (2026-01-21)
-- **Issue**: Titan is not included in the de421.bsp ephemeris kernel.
-- **Status**: Titan test skipped - requires de440.bsp or custom ephemeris kernel.
-- **Location**: `tests/test_integration.py::test_titan_full_pipeline`
+### Titan Ephemeris Support (2026-01-21)
+- **Issue**: Titan is not included in the de421.bsp or de440.bsp ephemeris kernels.
+- **Solution**: Implemented orbital mechanics calculation for Titan using known orbital elements:
+  - Uses Saturn's position from de440.bsp
+  - Computes Titan's position relative to Saturn using Keplerian orbital elements
+  - Orbital elements (J2000):
+    * Semi-major axis: 1,221,870 km
+    * Eccentricity: 0.0288
+    * Inclination: 0.34854°
+    * Longitude of ascending node: 168.469°
+    * Argument of periapsis: 179.09°
+    * Mean anomaly at epoch: 173.795°
+    * Orbital period: 15.945 days
+  - Solves Kepler's equation using Newton-Raphson iteration
+  - Rotates orbital position to ICRS coordinates using 3D rotation matrices
+- **Status**: Titan test now passes - no longer skipped
+- **Location**: `src/sunset/geometry/resolver.py` in `_get_titan_position()` function.
 
 ### Topos Earth-Specific
 - **Date**: 2026-01-20

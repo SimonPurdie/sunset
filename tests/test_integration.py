@@ -120,9 +120,23 @@ class TestIntegrationFullPipeline:
 
     def test_titan_full_pipeline(self, temp_dir):
         """Test full pipeline execution for Titan."""
-        pytest.skip(
-            "Titan not available in de421.bsp ephemeris kernel - requires de440.bsp or custom kernel"
+        utc_time = "2026-01-21T12:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "titan_sunset.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="titan",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
         )
+
+        assert result == 0, f"Titan render failed with exit code {result}"
+        assert output_path.exists(), "Output file not created"
+
+        self._validate_png_contract(output_path)
+        self._validate_metadata_contract(output_path, "titan", utc_time, seed)
 
     def test_contract_validation_png_format(self, temp_dir):
         """Test that output is valid PNG format."""
