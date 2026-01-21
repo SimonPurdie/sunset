@@ -85,12 +85,12 @@
    - [x] 12.2 Ensure seed-controlled randomness
    - [x] 12.3 Document numeric tolerance
    - [x] 12.4 Atomic tests
-- [ ] 13. End-to-End Testing & Validation
-   - [x] 13.1 Create integration test suite
-   - [x] 13.2 Contract validation
-   - [ ] 13.3 Visual validation
-   - [x] 13.4 Cross-body validation
-   - [ ] 13.5 Performance benchmarking
+ - [ ] 13. End-to-End Testing & Validation
+    - [x] 13.1 Create integration test suite
+    - [x] 13.2 Contract validation
+    - [x] 13.3 Visual validation
+    - [x] 13.4 Cross-body validation
+    - [ ] 13.5 Performance benchmarking
 
 ---
 

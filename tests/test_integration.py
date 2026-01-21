@@ -6,6 +6,7 @@ import numpy as np
 
 from sunset.main import render_sunset
 from sunset.models import SOLAR_SYSTEM_BODIES
+from sunset.color.spectral import spectral_to_xyz
 
 
 class TestIntegrationFullPipeline:
@@ -204,6 +205,137 @@ class TestIntegrationFullPipeline:
         """Test that auto body selection produces valid output."""
         pytest.skip(
             "Auto-selection includes non-Earth bodies that are not yet supported"
+        )
+
+    def test_visual_validation_spectral_variation(self, temp_dir):
+        """Test that spectral radiance varies across wavelengths (physics-based)."""
+        from sunset.optics.integrator import compute_spectral_radiance
+        from sunset.models.atmosphere import get_atmosphere
+        from sunset.models.bodies import SOLAR_SYSTEM_BODIES
+
+        body = SOLAR_SYSTEM_BODIES["earth"]
+        atmosphere = get_atmosphere("earth", 0)
+        sun_direction = (0.0, 0.0, 1.0)
+
+        spectral_radiance = compute_spectral_radiance(
+            atmosphere,
+            sun_direction,
+            0,
+            0,
+            body.radius_m,
+        )
+
+        radiance = spectral_radiance.radiance
+
+        assert radiance is not None, "Spectral radiance not computed"
+        assert len(radiance) > 1, (
+            "Spectral radiance has insufficient wavelength resolution"
+        )
+
+        std_radiance = np.std(radiance)
+        assert std_radiance > 1e-6, (
+            "Spectral radiance is flat across wavelengths - indicates physics not computed"
+        )
+
+    def test_visual_validation_rayleigh_wavelength_scaling(self, temp_dir):
+        """Test that shorter wavelengths scatter more than longer wavelengths (Rayleigh physics)."""
+        from sunset.optics.integrator import compute_spectral_radiance
+        from sunset.models.atmosphere import get_atmosphere
+        from sunset.models.bodies import SOLAR_SYSTEM_BODIES
+
+        body = SOLAR_SYSTEM_BODIES["earth"]
+        atmosphere = get_atmosphere("earth", 0)
+        sun_direction = (0.0, 0.0, 1.0)
+
+        spectral_radiance = compute_spectral_radiance(
+            atmosphere,
+            sun_direction,
+            0,
+            0,
+            body.radius_m,
+        )
+
+        wavelengths = spectral_radiance.wavelengths
+        radiance = spectral_radiance.radiance
+
+        blue_idx = np.argmin(np.abs(wavelengths - 450))
+        green_idx = np.argmin(np.abs(wavelengths - 550))
+        red_idx = np.argmin(np.abs(wavelengths - 650))
+
+        skylight_blue = spectral_radiance.skylight_contribution[blue_idx]
+        skylight_red = spectral_radiance.skylight_contribution[red_idx]
+
+        assert skylight_blue > skylight_red * 1.1, (
+            "Rayleigh scattering not λ⁻⁴: blue skylight should dominate red"
+        )
+
+    def test_visual_validation_sky_gradient_exists(self, temp_dir):
+        """Test that sky has color gradient from horizon to zenith (not uniform)."""
+        utc_time = "2026-01-21T18:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "gradient_test.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
+        )
+
+        assert result == 0, "Render failed"
+
+        with Image.open(output_path) as img:
+            arr = np.array(img)
+
+            middle_col = arr[:, arr.shape[1] // 2, :]
+
+            top_region = middle_col[0 : arr.shape[0] // 4, :]
+            bottom_region = middle_col[arr.shape[0] // 2 : 3 * arr.shape[0] // 4, :]
+
+            mean_top = np.mean(top_region, axis=0)
+            mean_bottom = np.mean(bottom_region, axis=0)
+
+            color_difference = np.linalg.norm(mean_top - mean_bottom)
+            assert color_difference > 5, (
+                "Sky gradient too weak - may indicate hardcoded uniform colors"
+            )
+
+    def test_visual_validation_atmospheric_influence(self, temp_dir):
+        """Test that different atmospheric compositions produce different colors."""
+        from sunset.optics.integrator import compute_spectral_radiance
+        from sunset.models.atmosphere import get_atmosphere
+        from sunset.models.bodies import SOLAR_SYSTEM_BODIES
+
+        earth_body = SOLAR_SYSTEM_BODIES["earth"]
+        earth_atmo = get_atmosphere("earth", 0)
+        sun_direction = (0.0, 0.0, 1.0)
+
+        mars_body = SOLAR_SYSTEM_BODIES["mars"]
+        mars_atmo = get_atmosphere("mars", 0)
+
+        earth_radiance = compute_spectral_radiance(
+            earth_atmo,
+            sun_direction,
+            0,
+            0,
+            earth_body.radius_m,
+        )
+
+        mars_radiance = compute_spectral_radiance(
+            mars_atmo,
+            sun_direction,
+            0,
+            0,
+            mars_body.radius_m,
+        )
+
+        earth_xyz = spectral_to_xyz(earth_radiance)
+        mars_xyz = spectral_to_xyz(mars_radiance)
+
+        color_difference = np.linalg.norm(earth_xyz - mars_xyz)
+        assert color_difference > 0.01, (
+            "Earth and Mars produce identical colors - atmospheric influence not computed"
         )
 
     def _validate_png_contract(self, output_path: Path):
