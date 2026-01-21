@@ -235,10 +235,11 @@ def render_scene_to_pil(
         height: Image height in pixels (minimum 512)
 
     Returns:
-        PIL Image in RGB mode, 16-bit per channel
+        PIL Image in RGB mode
     """
     rgb_array = render_scene(observer, width, height)
 
-    image = Image.fromarray(rgb_array, mode="I;16")
+    rgb_8bit = (rgb_array / 257).astype(np.uint8)
+    image = Image.fromarray(rgb_8bit, mode="RGB")
 
-    return image.convert("RGB")
+    return image
