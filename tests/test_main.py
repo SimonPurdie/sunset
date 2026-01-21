@@ -387,7 +387,7 @@ def test_parse_args_defaults():
         assert args.utc_time.endswith("Z")
         assert args.body is None
         assert args.seed is None
-        assert args.output == "sunset.png"
+        assert args.output is None
         assert args.caption is False
 
 

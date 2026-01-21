@@ -23,10 +23,17 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
 - **Result:** Sun now correctly positioned relative to horizon based on actual observer.sun_direction
 - **Tests:** All 169 tests pass
 
-### Output Filename Management
+### ~~Output Filename Management~~ (COMPLETED 2026-01-21)
 - **Change:** Save output images to `output/YYYYMMDD-HHMMSS-planetname.png` instead of overwriting `sunset.png`
 - **Example:** `output/20260121-143052-mars.png`
 - **Rationale:** Preserve previous renders for comparison; easier inspection and debugging
+- **Implementation:**
+  - Changed default `--output` argument to `None` in `parse_args()`
+  - Modified `render_sunset()` to auto-generate output path when `output_path` is `None`
+  - Generated path format: `output/{timestamp}-{bodyname}.png` where timestamp uses `YYYYMMDD-HHMMSS` format
+  - Manual override still available via `--output` flag
+  - Updated test `test_parse_args_defaults` to expect `None` instead of `"sunset.png"`
+- **Tests:** All 169 tests pass
 
 ### Sun Rendering Bug
 - **Issue:** Sun appears as a diffuse black circle in the top-right corner; should be centered horizontally and intersect the horizon

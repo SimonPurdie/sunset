@@ -39,8 +39,8 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="sunset.png",
-        help="Output PNG file path (default: sunset.png)",
+        default=None,
+        help="Output PNG file path (default: output/YYYYMMDD-HHMMSS-planetname.png)",
     )
     parser.add_argument(
         "--caption",
@@ -137,7 +137,7 @@ def render_sunset(
     utc_time: str,
     body_id: str | None = None,
     random_seed: int | None = None,
-    output_path: str = "sunset.png",
+    output_path: str | None = None,
     print_caption: bool = False,
 ) -> int:
     """Render a sunset scene and save to PNG with embedded metadata.
@@ -146,7 +146,7 @@ def render_sunset(
         utc_time: ISO-8601 UTC timestamp
         body_id: Body identifier (None for auto-selection)
         random_seed: Random seed for deterministic output
-        output_path: Path to save output PNG
+        output_path: Path to save output PNG (None for auto-generated)
         print_caption: If True, print caption to stdout
 
     Returns:
@@ -214,6 +214,11 @@ def render_sunset(
                 return 1
 
             image_array = render_scene(observer)
+
+            if output_path is None:
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                body_name = observer.body.name.lower()
+                output_path = f"output/{timestamp}-{body_name}.png"
 
             output_file = Path(output_path)
             output_file.parent.mkdir(parents=True, exist_ok=True)
