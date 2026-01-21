@@ -51,20 +51,20 @@
     - [x] 6.4 Implement Mie scattering
     - [x] 6.5 Compute skylight contribution
     - [x] 6.6 Atomic tests
-- [x] 7. Spectral → Color Pipeline
+ - [x] 7. Spectral → Color Pipeline
    - [x] 7.1 Implement spectral to XYZ conversion
    - [x] 7.2 Implement exposure and tone mapping
    - [x] 7.3 Implement XYZ to sRGB encoding
    - [x] 7.4 Implement 16-bit output support
    - [x] 7.5 Atomic tests
-- [ ] 8. Software Renderer
-  - [ ] 8.1 Implement CPU-only rendering engine
-  - [ ] 8.2 Implement horizon geometry
-  - [ ] 8.3 Implement sun rendering
-  - [ ] 8.4 Implement sky rendering
-  - [ ] 8.5 Implement ground/horizon rendering
-  - [ ] 8.6 Ensure resolution ≥ 1024 × 512
-  - [ ] 8.7 Atomic tests
+- [x] 8. Software Renderer
+  - [x] 8.1 Implement CPU-only rendering engine
+  - [x] 8.2 Implement horizon geometry
+  - [x] 8.3 Implement sun rendering
+  - [x] 8.4 Implement sky rendering
+  - [x] 8.5 Implement ground/horizon rendering
+  - [x] 8.6 Ensure resolution ≥ 1024 × 512
+  - [x] 8.7 Atomic tests
 - [ ] 9. Caption Generator
   - [ ] 9.1 Implement `caption/generator.py`
   - [ ] 9.2 Add required metadata content
