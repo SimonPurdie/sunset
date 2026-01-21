@@ -351,6 +351,63 @@ class TestIntegrationFullPipeline:
             assert width >= 1024, f"Width {width} < 1024 minimum"
             assert height >= 512, f"Height {height} < 512 minimum"
 
+    def test_performance_render_time(self, temp_dir):
+        """Test that render time is within reasonable limits for CPU-only rendering."""
+        import time
+
+        utc_time = "2026-01-21T18:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "performance_test.png"
+
+        start_time = time.time()
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
+        )
+        elapsed_time = time.time() - start_time
+
+        assert result == 0, "Render failed"
+
+        assert elapsed_time < 30.0, (
+            f"Render time {elapsed_time:.2f}s exceeds 30s limit - may indicate performance issue"
+        )
+
+        assert output_path.exists(), "Output file not created"
+
+    def test_performance_memory_usage(self, temp_dir):
+        """Test that memory usage is within practical limits during rendering."""
+        import tracemalloc
+
+        utc_time = "2026-01-21T18:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "memory_test.png"
+
+        tracemalloc.start()
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
+        )
+
+        current, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+
+        assert result == 0, "Render failed"
+
+        peak_mb = peak / (1024 * 1024)
+
+        assert peak_mb < 500, (
+            f"Peak memory usage {peak_mb:.2f}MB exceeds 500MB limit - may indicate memory leak or inefficiency"
+        )
+
+        assert output_path.exists(), "Output file not created"
+
     def _validate_metadata_contract(
         self,
         output_path: Path,
