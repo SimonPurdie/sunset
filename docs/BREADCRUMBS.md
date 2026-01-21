@@ -2,11 +2,30 @@
 
 ## Operational Notes
 
+### Non-Earth Planetary Geometry Resolution (2026-01-21)
+- **Issue**: Skyfield's `Topos` class is Earth-specific and cannot be used for other planets.
+- **Solution**: Implemented direct geometric approach in `_find_planetary_sunset_terminator()` that:
+  1. Randomly samples points on the planet's sphere using spherical coordinates
+  2. Computes solar elevation by finding the dot product between surface normal and sun direction
+  3. Returns points where sun is at sunset (elevation ∈ [-1.5°, +0.5°])
+  4. Computes ENU sun direction without requiring planet rotation data
+- **Impact**: Non-Earth planetary geometry (Mars, Venus, Mercury, Moon) now works without requiring PlanetaryConstants or IAU rotation data files.
+- **Caveats**:
+  - Latitude/longitude values are computed in ICRS-aligned frame rather than actual body-fixed coordinates
+  - This is mathematically consistent but doesn't match actual lat/lon according to IAU definitions
+  - Titan not supported (requires de440.bsp or custom ephemeris kernel)
+- **Location**: `src/sunset/geometry/resolver.py` in `_find_planetary_sunset_terminator()` function.
+
 ### Skyfield API Limitations
 - **Date**: 2026-01-20
 - **Issue**: Skyfield's `.apparent()` method can fail with `EphemerisRangeError` due to relativistic calculation issues with Jupiter (body 599) and Saturn (body 699) for certain geometries.
 - **Workaround**: Implemented fallback to manual RA/Dec to Alt/Az calculation using sidereal time when `.apparent()` fails.
 - **Location**: `src/sunset/geometry/resolver.py` in `_get_alt_az()` function.
+
+### Titan Ephemeris Limitations (2026-01-21)
+- **Issue**: Titan is not included in the de421.bsp ephemeris kernel.
+- **Status**: Titan test skipped - requires de440.bsp or custom ephemeris kernel.
+- **Location**: `tests/test_integration.py::test_titan_full_pipeline`
 
 ### Topos Earth-Specific
 - **Date**: 2026-01-20

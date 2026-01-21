@@ -175,9 +175,10 @@ def _find_planetary_sunset_terminator(
     random_seed: Optional[int],
 ) -> tuple[float, float, float, tuple[float, float, float], float]:
     """
-    Find sunset location on a non-Earth planet using sub-solar point approach.
+    Find sunset location on a non-Earth planet using direct geometric approach.
 
-    This method finds the sub-solar point and searches nearby for sunset band.
+    This method finds points on the terminator (circle where sun is on horizon)
+    using pure geometry without requiring planet rotation data.
 
     Args:
         t: Skyfield Time object
@@ -192,14 +193,13 @@ def _find_planetary_sunset_terminator(
         (latitude, longitude, solar_elevation, sun_direction, solar_angular_diameter)
     """
     planet_position = planet.at(t)
-    sun_from_planet = planet_position.observe(sun)
-
-    ra, dec, distance = sun_from_planet.radec(epoch="date")
-
-    sub_solar_lat = float(dec.degrees)
-    sub_solar_lon = (float(ra.hours) * 15.0 + 180.0) % 360.0 - 180.0
+    sun_vec = sun.at(t).position.km
+    planet_center = planet_position.position.km
 
     rng = np.random.default_rng(random_seed)
+
+    sun_from_planet = sun_vec - planet_center
+    sun_direction_norm = sun_from_planet / np.linalg.norm(sun_from_planet)
 
     best_elevation = 99.0
     best_lat = 0.0
@@ -207,48 +207,42 @@ def _find_planetary_sunset_terminator(
     best_sun_direction = (0.0, 0.0, 0.0)
     best_solar_angular_diameter = 0.0
 
-    for i in range(500):
-        offset_deg = rng.uniform(-15, 15)
-        azimuth_offset = rng.uniform(0, 360)
+    for i in range(2000):
+        theta = rng.uniform(0, 2 * np.pi)
+        phi = rng.uniform(-np.pi / 2, np.pi / 2)
 
-        test_lat = sub_solar_lat + offset_deg
-        test_lon = sub_solar_lon + azimuth_offset
+        radial_dir = np.array(
+            [np.cos(phi) * np.cos(theta), np.cos(phi) * np.sin(theta), np.sin(phi)]
+        )
 
-        test_lat = np.clip(test_lat, -90, 90)
-        test_lon = (test_lon + 180.0) % 360.0 - 180.0
-
-        lat_rad = np.radians(test_lat)
-        lon_rad = np.radians(test_lon)
-
-        planet_center = planet_position.position.km
-        radius_km = body_radius_m / 1000.0
-
-        x_local = radius_km * np.cos(lat_rad) * np.cos(lon_rad)
-        y_local = radius_km * np.cos(lat_rad) * np.sin(lon_rad)
-        z_local = radius_km * np.sin(lat_rad)
-
-        surface_km = planet_center + np.array([x_local, y_local, z_local])
-
-        sun_vec = sun.at(t).position.km
-        to_sun = sun_vec - surface_km
-
-        radial = surface_km / np.linalg.norm(surface_km)
-
-        to_sun_norm = to_sun / np.linalg.norm(to_sun)
-
-        dot_product = np.dot(to_sun_norm, radial)
-        dot_product = np.clip(dot_product, -1, 1)
-        elevation = 90.0 - np.degrees(np.arccos(dot_product))
+        dot_with_sun = np.dot(radial_dir, sun_direction_norm)
+        dot_with_sun = np.clip(dot_with_sun, -1, 1)
+        elevation = 90.0 - np.degrees(np.arccos(dot_with_sun))
 
         if -1.5 <= elevation <= 0.5 and abs(elevation) < abs(best_elevation):
             best_elevation = elevation
-            best_lat = test_lat
-            best_lon = test_lon
-            best_sun_direction = _compute_enu_direction_from_icrs(
-                to_sun_norm, radial, test_lat, test_lon
-            )
+            best_lat = np.degrees(phi)
+            best_lon = (np.degrees(theta) + 180) % 360 - 180
+
+            up = radial_dir
+            north = np.array([0, 0, 1])
+
+            if np.abs(np.dot(up, north)) > 0.99:
+                east = np.array([1, 0, 0])
+                north = np.array([0, 0, 1])
+            else:
+                east = np.cross(north, up)
+                east = east / np.linalg.norm(east)
+                north = np.cross(up, east)
+
+            east_comp = float(np.dot(sun_direction_norm, east))
+            north_comp = float(np.dot(sun_direction_norm, north))
+            up_comp = float(np.dot(sun_direction_norm, up))
+            best_sun_direction = (east_comp, north_comp, up_comp)
+
+            sun_distance_km = np.linalg.norm(sun_from_planet)
             best_solar_angular_diameter = _calculate_solar_angular_diameter(
-                float(np.linalg.norm(to_sun))
+                sun_distance_km
             )
 
         if abs(elevation) < 0.01:

@@ -40,23 +40,89 @@ class TestIntegrationFullPipeline:
 
     def test_moon_full_pipeline(self, temp_dir):
         """Test full pipeline execution for Moon (airless body)."""
-        pytest.skip("Non-Earth bodies require rotation data - see docs/BREADCRUMBS.md")
+        utc_time = "2026-01-21T12:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "moon_sunset.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="moon",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
+        )
+
+        assert result == 0, f"Moon render failed with exit code {result}"
+        assert output_path.exists(), "Output file not created"
+
+        self._validate_png_contract(output_path)
+        self._validate_metadata_contract(output_path, "moon", utc_time, seed)
 
     def test_mercury_full_pipeline(self, temp_dir):
         """Test full pipeline execution for Mercury (airless body)."""
-        pytest.skip("Non-Earth bodies require rotation data - see docs/BREADCRUMBS.md")
+        utc_time = "2026-01-21T06:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "mercury_sunset.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="mercury",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
+        )
+
+        assert result == 0, f"Mercury render failed with exit code {result}"
+        assert output_path.exists(), "Output file not created"
+
+        self._validate_png_contract(output_path)
+        self._validate_metadata_contract(output_path, "mercury", utc_time, seed)
 
     def test_mars_full_pipeline(self, temp_dir):
         """Test full pipeline execution for Mars."""
-        pytest.skip("Non-Earth bodies require rotation data - see docs/BREADCRUMBS.md")
+        utc_time = "2026-01-21T12:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "mars_sunset.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="mars",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
+        )
+
+        assert result == 0, f"Mars render failed with exit code {result}"
+        assert output_path.exists(), "Output file not created"
+
+        self._validate_png_contract(output_path)
+        self._validate_metadata_contract(output_path, "mars", utc_time, seed)
 
     def test_venus_full_pipeline(self, temp_dir):
         """Test full pipeline execution for Venus."""
-        pytest.skip("Non-Earth bodies require rotation data - see docs/BREADCRUMBS.md")
+        utc_time = "2026-01-21T00:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "venus_sunset.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="venus",
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
+        )
+
+        assert result == 0, f"Venus render failed with exit code {result}"
+        assert output_path.exists(), "Output file not created"
+
+        self._validate_png_contract(output_path)
+        self._validate_metadata_contract(output_path, "venus", utc_time, seed)
 
     def test_titan_full_pipeline(self, temp_dir):
         """Test full pipeline execution for Titan."""
-        pytest.skip("Non-Earth bodies require rotation data - see docs/BREADCRUMBS.md")
+        pytest.skip(
+            "Titan not available in de421.bsp ephemeris kernel - requires de440.bsp or custom kernel"
+        )
 
     def test_contract_validation_png_format(self, temp_dir):
         """Test that output is valid PNG format."""
@@ -203,9 +269,22 @@ class TestIntegrationFullPipeline:
 
     def test_auto_body_selection(self, temp_dir):
         """Test that auto body selection produces valid output."""
-        pytest.skip(
-            "Auto-selection includes non-Earth bodies that are not yet supported"
+        utc_time = "2026-01-21T12:00:00Z"
+        seed = 42
+        output_path = Path(temp_dir) / "auto_body_sunset.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id=None,
+            random_seed=seed,
+            output_path=str(output_path),
+            print_caption=False,
         )
+
+        assert result == 0, f"Auto body selection failed with exit code {result}"
+        assert output_path.exists(), "Output file not created"
+
+        self._validate_png_contract(output_path)
 
     def test_visual_validation_spectral_variation(self, temp_dir):
         """Test that spectral radiance varies across wavelengths (physics-based)."""

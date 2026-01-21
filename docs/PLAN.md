@@ -23,14 +23,12 @@
     - [x] 3.4 Compute sun direction vector
     - [x] 3.5 Calculate solar angular diameter
     - [x] 3.6 Atomic tests
-    - [x] 3.7 Investigated non-Earth bodies (Mars, Venus, Mercury, Moon, Titan)
-      - Note: Topos is Earth-specific. Investigated PlanetaryConstants approach requiring binary rotation data files (.bcp, .tf, .tpc).
-      - Status: Implementation partially complete. Earth works correctly. Non-Earth planets require either:
-        1. Downloading IAU rotation data files (e.g., mars_pa_iau2000_1900-2050.bpc)
-        2. Implementing custom rotation matrices using published IAU parameters
-        3. Simplified geometry approximation without exact rotation matrices
-      - Tests for non-Earth bodies are skipped pending resolution
-      - See docs/BREADCRUMBS.md for detailed investigation notes
+    - [x] 3.7 Implemented non-Earth planetary geometry resolution (Mars, Venus, Mercury, Moon)
+      - Solution: Direct geometric approach that samples points on sphere and computes solar elevation using dot products
+      - Avoids need for Topos or PlanetaryConstants rotation data
+      - Note: Latitude/longitude computed in ICRS-aligned frame rather than actual body-fixed coordinates
+      - Titan not supported (requires de440.bsp or custom ephemeris kernel)
+      - See docs/BREADCRUMBS.md for details
 - [x] 4. Atmospheric Profile Provider
   - [x] 4.1 Create body-specific profiles
   - [x] 4.2 Implement `atmosphere/provider.py`
