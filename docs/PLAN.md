@@ -75,11 +75,11 @@
    - [x] 10.2 Add required metadata keys
    - [x] 10.3 Implement 8-bit PNG writing with Floyd-Steinberg dithering (16-bit per channel not directly supported by Pillow fromarray)
    - [x] 10.4 Atomic tests
-- [ ] 11. CLI Entry Point & Integration
-  - [ ] 11.1 Implement CLI in `main.py`
-  - [ ] 11.2 Orchestrate full pipeline
-  - [ ] 11.3 Implement body iteration
-  - [ ] 11.4 Error handling and validation
+ - [x] 11. CLI Entry Point & Integration
+   - [x] 11.1 Implement CLI in `main.py`
+   - [x] 11.2 Orchestrate full pipeline
+   - [x] 11.3 Implement body iteration
+   - [x] 11.4 Error handling and validation
 - [ ] 12. Determinism & Reproducibility Verification
   - [ ] 12.1 Implement reproducibility tests
   - [ ] 12.2 Ensure seed-controlled randomness
