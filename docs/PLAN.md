@@ -44,19 +44,19 @@
    - [x] 5.3 Implement altitude iteration
    - [x] 5.4 Implement body rejection logic
    - [x] 5.5 Atomic tests
- - [x] 6. Optical Path Integrator
-   - [x] 6.1 Implement `optics/integrator.py`
-   - [x] 6.2 Implement Rayleigh scattering physics
-   - [x] 6.3 Implement optical path integration
-   - [x] 6.4 Implement Mie scattering
-   - [x] 6.5 Compute skylight contribution
-   - [x] 6.6 Atomic tests
-- [ ] 7. Spectral → Color Pipeline
-  - [ ] 7.1 Implement spectral to XYZ conversion
-  - [ ] 7.2 Implement exposure and tone mapping
-  - [ ] 7.3 Implement XYZ to sRGB encoding
-  - [ ] 7.4 Implement 16-bit output support
-  - [ ] 7.5 Atomic tests
+- [x] 6. Optical Path Integrator
+    - [x] 6.1 Implement `optics/integrator.py`
+    - [x] 6.2 Implement Rayleigh scattering physics
+    - [x] 6.3 Implement optical path integration
+    - [x] 6.4 Implement Mie scattering
+    - [x] 6.5 Compute skylight contribution
+    - [x] 6.6 Atomic tests
+- [x] 7. Spectral → Color Pipeline
+   - [x] 7.1 Implement spectral to XYZ conversion
+   - [x] 7.2 Implement exposure and tone mapping
+   - [x] 7.3 Implement XYZ to sRGB encoding
+   - [x] 7.4 Implement 16-bit output support
+   - [x] 7.5 Atomic tests
 - [ ] 8. Software Renderer
   - [ ] 8.1 Implement CPU-only rendering engine
   - [ ] 8.2 Implement horizon geometry
