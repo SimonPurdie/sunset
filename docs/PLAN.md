@@ -70,11 +70,11 @@
    - [x] 9.2 Add required metadata content
    - [x] 9.3 Ensure no speculative claims
    - [x] 9.4 Atomic tests
-- [ ] 10. PNG Metadata Embedding
-  - [ ] 10.1 Implement `metadata/embedder.py`
-  - [ ] 10.2 Add required metadata keys
-  - [ ] 10.3 Implement 16-bit PNG writing
-  - [ ] 10.4 Atomic tests
+ - [x] 10. PNG Metadata Embedding
+   - [x] 10.1 Implement `metadata/embedder.py`
+   - [x] 10.2 Add required metadata keys
+   - [x] 10.3 Implement 8-bit PNG writing with Floyd-Steinberg dithering (16-bit per channel not directly supported by Pillow fromarray)
+   - [x] 10.4 Atomic tests
 - [ ] 11. CLI Entry Point & Integration
   - [ ] 11.1 Implement CLI in `main.py`
   - [ ] 11.2 Orchestrate full pipeline
