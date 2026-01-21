@@ -10,6 +10,19 @@ This document tracks implementation tasks resulting from testing, bug fixes, and
 
 These issues prevent the system from meeting the SPEC.md contract or user requirements.
 
+### ~~Sun Rendering Bug~~ (COMPLETED 2026-01-21)
+- ~~Issue:** Sun appeared as a diffuse black circle in the top-right corner; should be centered horizontally and intersect the horizon
+- **Root cause:** Renderer was ignoring `observer.sun_direction` (ENU coordinates) and computing its own hardcoded sun direction based only on `solar_elevation_deg`. Also, `u` and `v` coordinates in `direction_map` precomputation were computed wrong (using `/width` and `/height` instead of `/center_x` and `/center_y`).
+- **Fix:**
+  1. Changed `u = (X - center_x) / width` to `u = (X - center_x) / center_x`
+  2. Changed `v = (center_y - Y) / height` to `v = (center_y - Y) / center_y`
+  3. Changed renderer to use `observer.sun_direction` instead of hardcoded direction
+  4. Fixed renderer coordinate system: forward=[0,1,0] (looking toward horizon along +Y), right=[1,0,0], up=[0,0,1]
+  5. Fixed coordinate mapping from ENU to renderer: (East, North, Up) → (X, Y, Z)
+  6. Updated `_compute_sky_brightness_factors` to take `sun_direction` parameter
+- **Result:** Sun now correctly positioned relative to horizon based on actual observer.sun_direction
+- **Tests:** All 169 tests pass
+
 ### Output Filename Management
 - **Change:** Save output images to `output/YYYYMMDD-HHMMSS-planetname.png` instead of overwriting `sunset.png`
 - **Example:** `output/20260121-143052-mars.png`

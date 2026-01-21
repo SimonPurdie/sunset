@@ -49,25 +49,23 @@ class Renderer:
 
         X, Y = np.meshgrid(x_coords, y_coords)
 
-        u = (X - center_x) / self.width
-        v = (center_y - Y) / self.height
+        u = (X - center_x) / center_x
+        v = (center_y - Y) / center_y
 
         forward = np.array([0.0, 0.0, 1.0], dtype=np.float32)
         right = np.array([1.0, 0.0, 0.0], dtype=np.float32)
         up = np.array([0.0, 1.0, 0.0], dtype=np.float32)
 
-        dir_x = (
-            forward[0] + 2.0 * (u - 0.5) * tan_half_fov * self.aspect_ratio * right[0]
-        )
+        dir_x = forward[0] + u * tan_half_fov * self.aspect_ratio * right[0]
         dir_y = (
             forward[1]
-            + 2.0 * (u - 0.5) * tan_half_fov * self.aspect_ratio * right[1]
-            + 2.0 * (v - 0.5) * tan_half_fov * up[1]
+            + u * tan_half_fov * self.aspect_ratio * right[1]
+            + v * tan_half_fov * up[1]
         )
         dir_z = (
             forward[2]
-            + 2.0 * (u - 0.5) * tan_half_fov * self.aspect_ratio * right[2]
-            + 2.0 * (v - 0.5) * tan_half_fov * up[2]
+            + u * tan_half_fov * self.aspect_ratio * right[2]
+            + v * tan_half_fov * up[2]
         )
 
         self.direction_map = np.stack([dir_x, dir_y, dir_z], axis=2)
@@ -101,8 +99,9 @@ class Renderer:
         )
         above_horizon_mask = v_angles > -horizon_angle_deg
 
+        sun_direction_enu = np.array(observer.sun_direction, dtype=np.float32)
         sun_direction = np.array(
-            [0.0, math.sin(sun_elevation_rad), math.cos(sun_elevation_rad)],
+            [sun_direction_enu[0], sun_direction_enu[1], sun_direction_enu[2]],
             dtype=np.float32,
         )
 
@@ -114,7 +113,7 @@ class Renderer:
         sky_base_srgb = self._compute_sky_base_color(atmospheric_profile, observer)
 
         sky_brightness_factors = self._compute_sky_brightness_factors(
-            self.direction_map, observer.solar_elevation_deg
+            self.direction_map, sun_direction
         )
 
         rgb_image = np.zeros((self.height, self.width, 3), dtype=np.float32)
@@ -193,16 +192,14 @@ class Renderer:
         return np.clip(ground_color, 0.0, 1.0)
 
     def _compute_sky_brightness_factors(
-        self, direction_map: np.ndarray, solar_elevation_deg: float
+        self, direction_map: np.ndarray, sun_direction: np.ndarray
     ) -> np.ndarray:
         """Compute brightness factors for sky based on angle from sun."""
-        viewing_angles = np.arccos(np.clip(direction_map[:, :, 2], -1.0, 1.0))
+        dot_products = np.sum(direction_map * sun_direction, axis=2)
+        dot_products = np.clip(dot_products, -1.0, 1.0)
+        angles_to_sun = np.arccos(dot_products)
 
-        solar_elevation_rad = math.radians(solar_elevation_deg)
-
-        angles_from_sun = np.abs(viewing_angles - (math.pi / 2 - solar_elevation_rad))
-
-        brightness_factors = np.clip(1.0 - angles_from_sun / (math.pi / 2), 0.0, 1.0)
+        brightness_factors = np.clip(1.0 - angles_to_sun / (math.pi / 2), 0.0, 1.0)
 
         return brightness_factors
 
