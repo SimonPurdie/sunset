@@ -154,10 +154,14 @@ def render_sunset(
     """
     try:
         import numpy as np
+        import hashlib
 
         seed_value: int
         if random_seed is None:
-            seed_value = int(np.random.default_rng().integers(0, 2**31 - 1))
+            hash_digest = hashlib.sha256(utc_time.encode()).digest()
+            seed_value = (
+                int.from_bytes(hash_digest[:4], byteorder="little") & 0x7FFFFFFF
+            )
         else:
             seed_value = random_seed
 

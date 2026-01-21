@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 import numpy as np
+import tempfile
+from PIL import Image
 
 from sunset.main import (
     parse_args,
@@ -420,3 +422,137 @@ def test_parse_args_invalid_body():
     with patch("sys.argv", ["sunset", "--body", "invalid"]):
         with pytest.raises(SystemExit):
             parse_args()
+
+
+def test_deterministic_output():
+    """Test that same inputs produce identical PNG output."""
+    utc_time = "2026-01-20T18:00:00Z"
+    seed = 42
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output1 = Path(tmpdir) / "sunset1.png"
+        output2 = Path(tmpdir) / "sunset2.png"
+
+        result1 = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=seed,
+            output_path=str(output1),
+            print_caption=False,
+        )
+        assert result1 == 0, "First render failed"
+
+        result2 = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=seed,
+            output_path=str(output2),
+            print_caption=False,
+        )
+        assert result2 == 0, "Second render failed"
+
+        img1 = Image.open(output1)
+        img2 = Image.open(output2)
+
+        assert np.array_equal(np.array(img1), np.array(img2)), (
+            "Images are not identical"
+        )
+
+        exif1 = img1.info
+        exif2 = img2.info
+
+        assert exif1 == exif2, "PNG metadata differs"
+
+
+def test_deterministic_output_without_explicit_seed():
+    """Test that same inputs produce identical output when seed is not provided."""
+    utc_time = "2026-01-20T18:00:00Z"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output1 = Path(tmpdir) / "sunset1.png"
+        output2 = Path(tmpdir) / "sunset2.png"
+
+        result1 = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=None,
+            output_path=str(output1),
+            print_caption=False,
+        )
+        assert result1 == 0, "First render failed"
+
+        result2 = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=None,
+            output_path=str(output2),
+            print_caption=False,
+        )
+        assert result2 == 0, "Second render failed"
+
+        img1 = Image.open(output1)
+        img2 = Image.open(output2)
+
+        assert np.array_equal(np.array(img1), np.array(img2)), (
+            "Images are not identical when seed not provided"
+        )
+
+
+def test_seed_affects_location():
+    """Test that different seeds produce different outputs."""
+    utc_time = "2026-01-20T18:00:00Z"
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output1 = Path(tmpdir) / "sunset1.png"
+        output2 = Path(tmpdir) / "sunset2.png"
+
+        result1 = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=123,
+            output_path=str(output1),
+            print_caption=False,
+        )
+        assert result1 == 0, "First render failed"
+
+        result2 = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=456,
+            output_path=str(output2),
+            print_caption=False,
+        )
+        assert result2 == 0, "Second render failed"
+
+        img1 = Image.open(output1)
+        img2 = Image.open(output2)
+
+        assert not np.array_equal(np.array(img1), np.array(img2)), (
+            "Images should differ with different seeds"
+        )
+
+
+def test_seed_preserved_metadata():
+    """Test that seed is recorded in PNG metadata."""
+    utc_time = "2026-01-20T18:00:00Z"
+    seed = 789
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output = Path(tmpdir) / "sunset.png"
+
+        result = render_sunset(
+            utc_time=utc_time,
+            body_id="earth",
+            random_seed=seed,
+            output_path=str(output),
+            print_caption=False,
+        )
+        assert result == 0, "Render failed"
+
+        img = Image.open(output)
+        metadata = img.info
+
+        assert "random_seed" in metadata, "random_seed not in metadata"
+        assert int(metadata["random_seed"]) == seed, (
+            "Seed in metadata does not match input seed"
+        )
