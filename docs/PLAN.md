@@ -38,12 +38,12 @@
   - [x] 4.4 Implement barometric formula
   - [x] 4.5 Store refractive index data
   - [x] 4.6 Atomic tests
-- [ ] 5. Visibility Elevation Resolver
-  - [ ] 5.1 Implement `visibility/resolver.py`
-  - [ ] 5.2 Implement optical depth calculation
-  - [ ] 5.3 Implement altitude iteration
-  - [ ] 5.4 Implement body rejection logic
-  - [ ] 5.5 Atomic tests
+ - [x] 5. Visibility Elevation Resolver
+   - [x] 5.1 Implement `visibility/resolver.py`
+   - [x] 5.2 Implement optical depth calculation
+   - [x] 5.3 Implement altitude iteration
+   - [x] 5.4 Implement body rejection logic
+   - [x] 5.5 Atomic tests
 - [ ] 6. Optical Path Integrator
   - [ ] 6.1 Implement `optics/integrator.py`
   - [ ] 6.2 Implement Rayleigh scattering physics
