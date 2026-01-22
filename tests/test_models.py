@@ -31,6 +31,8 @@ def test_all_bodies_have_required_fields():
         assert isinstance(body.name, str)
         assert body.radius_m > 0
         assert isinstance(body.has_atmosphere, bool)
+        assert len(body.ground_color_base) == 3
+        assert 0.0 <= body.ground_color_variation <= 1.0
 
 
 def test_observer_creation():

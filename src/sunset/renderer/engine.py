@@ -168,9 +168,9 @@ class Renderer:
             )
             rgb_image[:, :, c] = sky_channel
 
-        ground_srgb = self._compute_ground_color(atmospheric_profile, observer)
+        ground_rgb = self._compute_ground_color(atmospheric_profile, observer)
         for c in range(3):
-            rgb_image[~above_horizon_mask, c] = ground_srgb[c]
+            rgb_image[~above_horizon_mask, c] = ground_rgb[~above_horizon_mask, c]
 
         sun_color_with_limb_darkening, sun_glow_mask = (
             self._compute_sun_with_limb_darkening_and_glow(
@@ -229,7 +229,29 @@ class Renderer:
     def _compute_ground_color(
         self, atmospheric_profile, observer: Observer
     ) -> np.ndarray:
-        """Compute ground color (once per scene)."""
+        """Compute ground color with body-specific colors and terrain texture."""
+        base_color = np.array(observer.body.ground_color_base, dtype=np.float32)
+        variation = observer.body.ground_color_variation
+
+        np.random.seed(42)
+
+        noise = np.random.rand(self.height, self.width)
+        scaled_noise = (noise - 0.5) * 2 * variation
+
+        noise_x = np.arange(self.width, dtype=np.float32)
+        noise_y = np.arange(self.height, dtype=np.float32)
+        NX, NY = np.meshgrid(noise_x, noise_y)
+
+        scale = 0.05
+        pattern = np.sin(NX * scale) * np.cos(NY * scale) * variation
+
+        combined_variation = scaled_noise + pattern
+        combined_variation = np.clip(combined_variation, -variation, variation)
+
+        ground_rgb = np.zeros((self.height, self.width, 3), dtype=np.float32)
+        for c in range(3):
+            ground_rgb[:, :, c] = np.clip(base_color[c] + combined_variation, 0.0, 1.0)
+
         spectral_radiance = compute_spectral_radiance(
             atmospheric_profile,
             observer.sun_direction,
@@ -242,8 +264,10 @@ class Renderer:
         xyz_tonemapped = apply_exposure_and_tonemap(xyz)
         srgb = xyz_to_srgb(xyz_tonemapped)
 
-        ground_color = srgb * 0.1
-        return np.clip(ground_color, 0.0, 1.0)
+        ground_illumination = np.mean(srgb)
+        ground_rgb = ground_rgb * ground_illumination * 0.8
+
+        return ground_rgb
 
     def _compute_sun_with_limb_darkening_and_glow(
         self,
