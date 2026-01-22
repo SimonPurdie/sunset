@@ -2,6 +2,7 @@ from typing import Literal
 
 from ..models.atmosphere import AtmosphericProfile, NullAtmosphere, get_atmosphere
 from ..models.bodies import SOLAR_SYSTEM_BODIES
+from ..errors import BodyNotFoundError, AtmosphereProfileError
 from .profiles import earth_profile, mars_profile, venus_profile, titan_profile
 
 
@@ -24,7 +25,7 @@ def get_body_profile(
     body = SOLAR_SYSTEM_BODIES.get(body_key)
 
     if body is None:
-        raise ValueError(f"Unknown body: {body_name}")
+        raise BodyNotFoundError(body_name, list(SOLAR_SYSTEM_BODIES.keys()))
 
     if not body.has_atmosphere:
         return NullAtmosphere(body_name=body.name)
@@ -39,6 +40,6 @@ def get_body_profile(
     profile = body_profiles.get(body_key)
 
     if profile is None:
-        raise ValueError(f"Atmosphere profile not yet implemented for {body.name}")
+        raise AtmosphereProfileError(body.name)
 
     return profile

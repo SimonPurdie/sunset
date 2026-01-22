@@ -46,6 +46,43 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
 
 ### CLI/UX Enhancements
 
+### ~~Better Error Reporting~~ (COMPLETED 2026-01-22)
+- Provide actionable guidance in error messages
+- Include context (what was being attempted when error occurred)
+- Suggest next steps or possible fixes
+- **Implementation:** Created new `src/sunset/errors.py` module with:
+  * Base `SunsetError` class that includes message and suggestions
+  * Specialized error types: `BodyNotFoundError`, `SunsetNotFoundError`, `VisibilityError`, `TimeParseError`, `AtmosphereProfileError`
+  * `handle_error()` and `print_error()` utility functions
+- Updated all modules to use custom error types:
+  * `geometry/resolver.py` - uses `BodyNotFoundError`, `SunsetNotFoundError`, `TimeParseError`
+  * `atmosphere/provider.py` - uses `BodyNotFoundError`, `AtmosphereProfileError`
+  * `main.py` - uses `handle_error()`, `VisibilityError`, `print_error()`
+- Enhanced validation error messages with bug report suggestions
+- **Result:** All error messages now include:
+  * Clear description of what went wrong
+  * Actionable suggestions for resolution
+  * Context about what was being attempted
+- **Tests:** All 169 tests pass
+- **Example outputs:**
+  ```
+  Error: Unknown body: 'unknown_planet'
+
+  Suggestions:
+    - Available bodies: earth, mars, mercury, moon, titan, venus
+    - Check spelling (body names are case-insensitive)
+  ```
+
+  ```
+  Error while parsing UTC time:
+  Error: Invalid UTC time format: 'invalid-time'
+
+  Suggestions:
+    - Use ISO-8601 format with 'Z' suffix for UTC (e.g., '2024-01-15T18:00:00Z')
+    - Omit the command to use the current time
+    - Example: --utc-time 2024-01-15T18:00:00Z
+  ```
+
 ### ~~Informative Output Before Rendering~~ (COMPLETED 2026-01-22)
 - Print body name being rendered before rendering starts
 - Print relevant metadata (UTC time, location coordinates, altitude, solar elevation)

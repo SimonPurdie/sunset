@@ -95,12 +95,14 @@ def test_solar_angular_diameter_positive():
 
 
 def test_unknown_body_raises_error():
-    """Test that unknown body raises ValueError."""
+    """Test that unknown body raises SunsetError."""
+    from sunset.errors import SunsetError
+
     utc_time = "2026-01-20T18:00:00Z"
     body_id = "unknown_planet"
     random_seed = 66666
 
-    with pytest.raises(ValueError, match="Unknown body"):
+    with pytest.raises(SunsetError, match="Unknown body"):
         resolve_sunset_location(utc_time, body_id, random_seed)
 
 

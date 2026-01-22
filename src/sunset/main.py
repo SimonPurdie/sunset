@@ -14,6 +14,12 @@ from .caption.generator import generate_caption
 from .metadata.embedder import embed_metadata
 from .models import Observer, SOLAR_SYSTEM_BODIES, Scene
 from . import __version__
+from .errors import (
+    SunsetError,
+    VisibilityError,
+    handle_error,
+    print_error,
+)
 
 
 class Spinner:
@@ -134,32 +140,52 @@ def validate_scene(scene: Scene, observer: Observer) -> bool:
         True if validation passes
     """
     if -1.5 > observer.solar_elevation_deg or observer.solar_elevation_deg > 0.5:
-        print(
-            f"Error: Solar elevation {observer.solar_elevation_deg:.3f}° outside "
+        error = SunsetError(
+            f"Solar elevation {observer.solar_elevation_deg:.3f}° outside "
             f"required range [-1.5°, +0.5°]",
-            file=sys.stderr,
+            suggestions=[
+                "This indicates a bug in the geometry resolver",
+                "The resolver should always return a valid sunset location",
+                "Please report this issue with the command-line arguments used",
+            ],
         )
+        print_error(error)
         return False
 
     if not (-90 <= scene.latitude <= 90):
-        print(
-            f"Error: Latitude {scene.latitude}° outside valid range [-90, 90]",
-            file=sys.stderr,
+        error = SunsetError(
+            f"Latitude {scene.latitude}° outside valid range [-90, 90]",
+            suggestions=[
+                "This indicates a bug in the geometry resolver",
+                "The resolver should always return a valid latitude",
+                "Please report this issue with the command-line arguments used",
+            ],
         )
+        print_error(error)
         return False
 
     if not (-180 <= scene.longitude <= 180):
-        print(
-            f"Error: Longitude {scene.longitude}° outside valid range [-180, 180]",
-            file=sys.stderr,
+        error = SunsetError(
+            f"Longitude {scene.longitude}° outside valid range [-180, 180]",
+            suggestions=[
+                "This indicates a bug in the geometry resolver",
+                "The resolver should always return a valid longitude",
+                "Please report this issue with the command-line arguments used",
+            ],
         )
+        print_error(error)
         return False
 
     if scene.altitude_m < 0:
-        print(
-            f"Error: Altitude {scene.altitude_m}m cannot be negative",
-            file=sys.stderr,
+        error = SunsetError(
+            f"Altitude {scene.altitude_m}m cannot be negative",
+            suggestions=[
+                "This indicates a bug in the visibility resolver",
+                "Altitude should never be negative",
+                "Please report this issue with the command-line arguments used",
+            ],
         )
+        print_error(error)
         return False
 
     return True
@@ -187,6 +213,7 @@ def render_sunset(
     try:
         import numpy as np
         import hashlib
+        from .errors import SunsetError, TimeParseError
 
         seed_value: int
         if random_seed is None:
@@ -207,10 +234,13 @@ def render_sunset(
 
             try:
                 observer = resolve_sunset_location(utc_time, body_to_try, seed_value)
-            except ValueError as e:
+            except TimeParseError as e:
+                return handle_error(e, "parsing UTC time")
+            except SunsetError as e:
                 if body_id:
-                    print(f"Error: {e}", file=sys.stderr)
-                    return 1
+                    return handle_error(
+                        e, f"resolving sunset location for {body_to_try}"
+                    )
                 continue
 
             atmospheric_profile = get_body_profile(
@@ -223,11 +253,10 @@ def render_sunset(
 
             if not is_visible:
                 if body_id:
-                    print(
-                        f"Error: Sun not visible on {observer.body.name} at this time",
-                        file=sys.stderr,
+                    return handle_error(
+                        VisibilityError(observer.body.name, justification),
+                        f"checking visibility on {observer.body.name}",
                     )
-                    return 1
                 continue
 
             observer = Observer(
@@ -274,18 +303,18 @@ def render_sunset(
 
             return 0
 
-        print(
-            "Error: Could not find a body with a visible sunset at this time",
-            file=sys.stderr,
+        error = SunsetError(
+            "Could not find a body with a visible sunset at this time",
+            suggestions=[
+                "Try a different UTC time when a sunset might be occurring somewhere",
+                "Specify a particular body with --body to see detailed error messages",
+                "Check that the time is not during a period where the body is in continuous daylight or darkness",
+            ],
         )
-        return 1
+        return handle_error(error)
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        import traceback
-
-        traceback.print_exc()
-        return 1
+        return handle_error(e, "rendering sunset scene")
 
 
 def main():

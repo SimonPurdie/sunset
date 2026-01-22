@@ -6,6 +6,7 @@ from typing import Optional
 import warnings
 
 from sunset.models import Body, Observer, SOLAR_SYSTEM_BODIES
+from sunset.errors import BodyNotFoundError, SunsetNotFoundError, TimeParseError
 
 
 def _parse_iso_utc(utc_time: str):
@@ -17,13 +18,21 @@ def _parse_iso_utc(utc_time: str):
 
     Returns:
         Tuple of (year, month, day, hour, minute, second)
+
+    Raises:
+        TimeParseError: If utc_time cannot be parsed
     """
     from datetime import datetime
+    from sunset.errors import TimeParseError
 
     if utc_time.endswith("Z"):
         utc_time = utc_time[:-1] + "+00:00"
 
-    dt = datetime.fromisoformat(utc_time)
+    try:
+        dt = datetime.fromisoformat(utc_time)
+    except ValueError:
+        raise TimeParseError(utc_time)
+
     return (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
 
 
@@ -48,7 +57,7 @@ def resolve_sunset_location(
         ValueError: If body_id is not recognized or no sunset found
     """
     if body_id not in SOLAR_SYSTEM_BODIES:
-        raise ValueError(f"Unknown body: {body_id}")
+        raise BodyNotFoundError(body_id, list(SOLAR_SYSTEM_BODIES.keys()))
 
     body = SOLAR_SYSTEM_BODIES[body_id]
 
@@ -268,9 +277,7 @@ def _find_sunset_coordinates(
         )
 
     if abs(best_elevation) > 2.0:
-        raise ValueError(
-            f"Could not find sunset location for {body_id} at {t.utc_strftime()}"
-        )
+        raise SunsetNotFoundError(body_id, t.utc_strftime())
 
     return (
         best_latitude,
@@ -365,9 +372,7 @@ def _find_planetary_sunset_terminator(
             break
 
     if abs(best_elevation) > 2.0:
-        raise ValueError(
-            f"Could not find sunset location for {body_id} at {t.utc_strftime()}"
-        )
+        raise SunsetNotFoundError(body_id, t.utc_strftime())
 
     return (
         best_lat,
@@ -483,7 +488,7 @@ def _get_local_sidereal_time(utc_str, lon_deg: float) -> float:
     if match:
         year, month, day, hour, minute, second = map(int, match.groups())
     else:
-        raise ValueError(f"Could not parse UTC string: {utc_str}")
+        raise TimeParseError(utc_str)
 
     jd0 = _julian_day(year, month, day)
     jd = jd0 + (hour + minute / 60.0 + second / 3600.0) / 24.0
