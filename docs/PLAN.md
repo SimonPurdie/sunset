@@ -209,9 +209,64 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
   - **Tests:** All 169 tests pass (including updated test_all_bodies_have_required_fields)
   - **Physics:** Surface colors based on actual planetary surface composition (Mars iron oxide, etc.)
 
+### ~~Verbose flag for detailed internal state output~~ (COMPLETED 2026-01-22)
+- **Enhancement:** Added `--verbose` / `-v` CLI flag for detailed internal state output
+- **Implementation:**
+  * Added `print_verbose_info()` function that displays:
+    - Body information (name, radius, has atmosphere)
+    - Atmospheric profile details (gas composition, refractive index, Rayleigh scattering coefficients at sample wavelengths, Mie parameters, absorption bands)
+    - Observer geometry (latitude, longitude, altitude, solar elevation, sun direction ENU vector, solar angular diameter, horizon angle)
+    - Scene metadata (UTC time, random seed, renderer ID)
+  * Added `--verbose` / `-v` argument to CLI parser
+  * Updated `render_sunset()` to accept `verbose` parameter
+  * Verbose output is displayed between scene validation and rendering
+  * Airless bodies show "None (airless body)" for atmosphere
+- **Tests:** Added 3 new tests in `test_main.py`:
+  * `test_parse_args_verbose`: Tests long form `--verbose` flag
+  * `test_parse_args_verbose_short`: Tests short form `-v` flag
+  * `test_render_sunset_verbose`: Tests verbose output with mocked functions
+- **Result:** All 172 tests pass (up from 169)
+- **Example verbose output:**
+  ```
+  === VERBOSE: Internal State ===
+
+  Body Information:
+    Name: Earth
+    Radius: 6371000 m
+    Has atmosphere: True
+
+  Atmospheric Profile:
+    Gas composition:
+      N2: 78.08%
+      O2: 20.95%
+      Ar: 0.93%
+      CO2: 0.04%
+    Refractive index: 1.000293
+    Rayleigh scattering coefficient:
+      400 nm: 1.7666e-05
+      500 nm: 7.2829e-06
+      600 nm: 3.4666e-06
+      700 nm: 1.8771e-06
+
+  Observer Geometry:
+    Latitude: 45.000000°
+    Longitude: -75.000000°
+    Altitude: 0.0 m
+    Solar elevation: -0.300°
+    Sun direction (ENU): [0.1000, 0.2000, 0.9000]
+    Solar angular diameter: 0.5000°
+    Horizon angle: 0.00°
+
+  Scene Metadata:
+    UTC time: 2026-01-20T18:00:00Z
+    Random seed: 42
+    Renderer ID: sunset-0.1.0
+  === END VERBOSE ===
+  ```
+
 ### Debugging/Diagnostics
 - Intermediate visualization mode: spectral data, direction vectors, masks
-- Verbose flag for detailed internal state output
+- ~~Verbose flag for detailed internal state output~~ (COMPLETED 2026-01-22)
 
 ---
 

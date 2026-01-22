@@ -91,6 +91,12 @@ def parse_args():
         default=15.75,
         help="Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15%% from bottom)",
     )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        action="store_true",
+        help="Print detailed internal state during rendering",
+    )
     return parser.parse_args()
 
 
@@ -197,6 +203,76 @@ def validate_scene(scene: Scene, observer: Observer) -> bool:
     return True
 
 
+def print_verbose_info(observer, atmospheric_profile, scene):
+    """Print detailed internal state information for verbose output.
+
+    Args:
+        observer: Observer location and geometry
+        atmospheric_profile: Atmospheric profile for the body
+        scene: Scene metadata
+    """
+    print("=== VERBOSE: Internal State ===")
+    print()
+
+    print("Body Information:")
+    print(f"  Name: {observer.body.name}")
+    print(f"  Radius: {observer.body.radius_m:.0f} m")
+    print(f"  Has atmosphere: {observer.body.has_atmosphere}")
+    if not observer.body.has_atmosphere:
+        print("  Atmosphere: None (airless body)")
+    print()
+
+    if observer.body.has_atmosphere and atmospheric_profile is not None:
+        print("Atmospheric Profile:")
+        print(f"  Gas composition:")
+        for gas, fraction in atmospheric_profile.gas_composition.items():
+            print(f"    {gas}: {fraction:.2%}")
+        print(f"  Refractive index: {atmospheric_profile.refractive_index:.4f}")
+        if atmospheric_profile.rayleigh_coefficient:
+            import numpy as np
+
+            test_wavelengths = [400, 500, 600, 700]
+            print(f"  Rayleigh scattering coefficient:")
+            for wl in test_wavelengths:
+                coeff = atmospheric_profile.rayleigh_coefficient(wl)
+                print(f"    {wl} nm: {coeff:.4e}")
+        if atmospheric_profile.mie_parameters:
+            print(f"  Mie scattering parameters: {atmospheric_profile.mie_parameters}")
+        if atmospheric_profile.absorption_bands:
+            print(
+                f"  Absorption bands: {list(atmospheric_profile.absorption_bands.keys())}"
+            )
+        print()
+
+    print("Observer Geometry:")
+    print(f"  Latitude: {observer.latitude:.6f}°")
+    print(f"  Longitude: {observer.longitude:.6f}°")
+    print(f"  Altitude: {observer.altitude_m:.1f} m")
+    print(f"  Solar elevation: {observer.solar_elevation_deg:.3f}°")
+    print(
+        f"  Sun direction (ENU): [{observer.sun_direction[0]:.4f}, {observer.sun_direction[1]:.4f}, {observer.sun_direction[2]:.4f}]"
+    )
+    print(f"  Solar angular diameter: {observer.solar_angular_diameter_deg:.4f}°")
+
+    import math
+
+    body_radius_m = observer.body.radius_m
+    observer_radius = body_radius_m + observer.altitude_m
+    horizon_angle = (
+        math.acos(body_radius_m / observer_radius) if observer_radius > 0 else 0
+    )
+    horizon_angle_deg = math.degrees(horizon_angle)
+    print(f"  Horizon angle: {horizon_angle_deg:.2f}°")
+    print()
+
+    print("Scene Metadata:")
+    print(f"  UTC time: {scene.utc_time}")
+    print(f"  Random seed: {scene.random_seed}")
+    print(f"  Renderer ID: {scene.renderer_id}")
+    print("=== END VERBOSE ===")
+    print()
+
+
 def render_sunset(
     utc_time: str,
     body_id: str | None = None,
@@ -204,6 +280,7 @@ def render_sunset(
     output_path: str | None = None,
     print_caption: bool = False,
     camera_pitch_deg: float = 15.75,
+    verbose: bool = False,
 ) -> int:
     """Render a sunset scene and save to PNG with embedded metadata.
 
@@ -214,6 +291,7 @@ def render_sunset(
         output_path: Path to save output PNG (None for auto-generated)
         print_caption: If True, print caption to stdout
         camera_pitch_deg: Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15% from bottom)
+        verbose: If True, print detailed internal state during rendering
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -282,6 +360,9 @@ def render_sunset(
             if not validate_scene(scene, observer):
                 return 1
 
+            if verbose:
+                print_verbose_info(observer, atmospheric_profile, scene)
+
             print(f"Rendering sunset on {observer.body.name}")
             print(f"  UTC time: {utc_time}")
             print(f"  Location: {observer.latitude:.6f}°, {observer.longitude:.6f}°")
@@ -336,6 +417,7 @@ def main():
         output_path=args.output,
         print_caption=args.caption,
         camera_pitch_deg=args.camera_pitch,
+        verbose=args.verbose,
     )
 
     sys.exit(exit_code)

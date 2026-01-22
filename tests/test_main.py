@@ -333,6 +333,59 @@ def test_render_sunset_print_caption(
     assert "Sunset on Earth" in captured.out
 
 
+@patch("sunset.main.render_scene")
+@patch("sunset.main.embed_metadata")
+@patch("sunset.main.generate_caption")
+@patch("sunset.main.resolve_visibility_elevation")
+@patch("sunset.main.get_body_profile")
+@patch("sunset.main.resolve_sunset_location")
+def test_render_sunset_verbose(
+    mock_resolve,
+    mock_profile,
+    mock_visibility,
+    mock_caption,
+    mock_embed,
+    mock_render,
+    capsys,
+):
+    """Test render_sunset with verbose flag."""
+    from sunset.models import SOLAR_SYSTEM_BODIES
+    from sunset.atmosphere.profiles import earth_profile
+
+    body = SOLAR_SYSTEM_BODIES["earth"]
+    observer = Observer(
+        latitude=45.0,
+        longitude=-75.0,
+        altitude_m=0.0,
+        body=body,
+        solar_elevation_deg=-0.3,
+        sun_direction=(0.1, 0.2, 0.9),
+        solar_angular_diameter_deg=0.5,
+    )
+
+    mock_resolve.return_value = observer
+    mock_profile.return_value = earth_profile
+    mock_visibility.return_value = (0.0, "Justification", True)
+    mock_render.return_value = np.zeros((512, 1024, 3), dtype=np.uint16)
+
+    result = render_sunset(
+        utc_time="2026-01-20T18:00:00Z",
+        body_id="earth",
+        random_seed=42,
+        output_path="/tmp/test.png",
+        print_caption=False,
+        verbose=True,
+    )
+
+    assert result == 0
+    captured = capsys.readouterr()
+    assert "=== VERBOSE: Internal State ===" in captured.out
+    assert "Body Information:" in captured.out
+    assert "Atmospheric Profile:" in captured.out
+    assert "Observer Geometry:" in captured.out
+    assert "Scene Metadata:" in captured.out
+
+
 @patch("sunset.main.resolve_sunset_location")
 def test_render_sunset_unknown_body(mock_resolve):
     """Test render_sunset with unknown body."""
@@ -415,6 +468,29 @@ def test_parse_args_with_all_options():
         assert args.seed == 123
         assert args.output == "output.png"
         assert args.caption is True
+        assert args.verbose is False
+
+
+def test_parse_args_verbose():
+    """Test parse_args with verbose flag."""
+    with patch(
+        "sys.argv",
+        ["sunset", "--verbose"],
+    ):
+        args = parse_args()
+
+        assert args.verbose is True
+
+
+def test_parse_args_verbose_short():
+    """Test parse_args with verbose short flag."""
+    with patch(
+        "sys.argv",
+        ["sunset", "-v"],
+    ):
+        args = parse_args()
+
+        assert args.verbose is True
 
 
 def test_parse_args_invalid_body():
