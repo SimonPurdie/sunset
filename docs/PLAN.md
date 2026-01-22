@@ -265,7 +265,24 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
   ```
 
 ### Debugging/Diagnostics
-- Intermediate visualization mode: spectral data, direction vectors, masks
+- ~~Intermediate visualization mode: spectral data, direction vectors, masks~~ (COMPLETED 2026-01-22)
+  - **Enhancement:** Added `--debug` CLI flag to save intermediate visualizations
+  - **Implementation:**
+    * Added `render_with_debug()` method in Renderer class that returns intermediate data along with final image
+    * Added `render_scene_with_debug()` function for easier access
+    * Added `save_debug_visualizations()` function that saves:
+      - Direction vector visualizations (X, Y, Z components)
+      - Mask visualizations (sun, sky, ground, glow)
+      - Sky brightness factor map
+      - Angles to sun map
+      - Spectral data visualizations per wavelength
+      - Spectral data summary text file
+    * All debug outputs saved to `{output_file.stem}_debug/` subdirectory
+    * Visualizations use normalized grayscale (0-255) for easy inspection
+  - **Result:** Debug mode provides detailed insight into internal rendering pipeline
+  - **Tests:** All 172 tests pass
+  - **Example usage:**
+    - `sunset-render --body earth --debug` (outputs final image + debug directory)
 - ~~Verbose flag for detailed internal state output~~ (COMPLETED 2026-01-22)
 
 ---

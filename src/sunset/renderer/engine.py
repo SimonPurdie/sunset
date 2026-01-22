@@ -192,6 +192,109 @@ class Renderer:
 
         return rgb_16bit
 
+    def render_with_debug(self, observer: Observer) -> Tuple[np.ndarray, dict]:
+        """Render a sunset scene and return intermediate debugging data.
+
+        Args:
+            observer: Observer location and viewing parameters
+
+        Returns:
+            Tuple of (16-bit RGB image array, dict with intermediate data):
+                - spectral_radiance: Spectral radiance data
+                - direction_map: 3D direction vectors for each pixel
+                - masks: Dict of boolean masks (sun, sky, ground, glow)
+                - sky_brightness: Sky brightness factor array
+                - angles_to_sun: Angle from each pixel to sun center
+        """
+        atmospheric_profile = get_atmosphere(observer.body.name, observer.altitude_m)
+
+        sun_elevation_rad = math.radians(observer.solar_elevation_deg)
+        sun_angular_radius = math.radians(observer.solar_angular_diameter_deg / 2.0)
+
+        body_radius_m = observer.body.radius_m
+        observer_radius = body_radius_m + observer.altitude_m
+        horizon_angle = math.acos(body_radius_m / observer_radius)
+        horizon_angle_deg = math.degrees(horizon_angle)
+
+        rgb_image = np.zeros((self.height, self.width, 3), dtype=np.float32)
+
+        v_angles = (
+            (self.height // 2 - np.arange(self.height)) / (self.height // 2) * 45.0
+        )
+        above_horizon_mask = v_angles > -horizon_angle_deg
+
+        sun_direction_enu = np.array(observer.sun_direction, dtype=np.float32)
+        sun_direction = np.array(
+            [sun_direction_enu[0], sun_direction_enu[1], sun_direction_enu[2]],
+            dtype=np.float32,
+        )
+
+        dot_products = np.sum(self.direction_map * sun_direction, axis=2)
+        dot_products = np.clip(dot_products, -1.0, 1.0)
+        angles_to_sun = np.arccos(dot_products)
+        sun_mask = angles_to_sun <= sun_angular_radius
+
+        spectral_radiance = compute_spectral_radiance(
+            atmospheric_profile,
+            observer.sun_direction,
+            observer.altitude_m,
+            observer.solar_elevation_deg,
+            observer.body.radius_m,
+        )
+
+        sky_base_srgb = self._compute_sky_base_color(atmospheric_profile, observer)
+
+        sky_brightness_factors = self._compute_sky_brightness_factors(
+            self.direction_map, sun_direction
+        )
+
+        rgb_image = np.zeros((self.height, self.width, 3), dtype=np.float32)
+
+        for c in range(3):
+            sky_channel = (
+                sky_base_srgb[c]
+                * sky_brightness_factors
+                * (0.1 + 0.9 * above_horizon_mask[:, np.newaxis].astype(float))
+            )
+            rgb_image[:, :, c] = sky_channel
+
+        ground_rgb = self._compute_ground_color(atmospheric_profile, observer)
+        for c in range(3):
+            rgb_image[~above_horizon_mask, c] = ground_rgb[~above_horizon_mask, c]
+
+        sun_color_with_limb_darkening, sun_glow_mask = (
+            self._compute_sun_with_limb_darkening_and_glow(
+                atmospheric_profile, observer, angles_to_sun, sun_angular_radius
+            )
+        )
+        sun_glow = self._compute_sun_glow(atmospheric_profile, observer, sun_glow_mask)
+        rgb_image = np.where(
+            sun_mask[:, :, np.newaxis], sun_color_with_limb_darkening, rgb_image
+        )
+        rgb_image = rgb_image + sun_glow
+
+        stars = self._render_stars(
+            atmospheric_profile, observer, sky_brightness_factors, above_horizon_mask
+        )
+        rgb_image = rgb_image + stars
+
+        rgb_16bit = linear_to_srgb_16bit(rgb_image)
+
+        debug_data = {
+            "spectral_radiance": spectral_radiance,
+            "direction_map": self.direction_map.copy(),
+            "masks": {
+                "sun": sun_mask,
+                "sky": above_horizon_mask,
+                "ground": ~above_horizon_mask,
+                "glow": sun_glow_mask,
+            },
+            "sky_brightness": sky_brightness_factors,
+            "angles_to_sun": angles_to_sun,
+        }
+
+        return rgb_16bit, debug_data
+
     def _compute_sky_base_color(
         self, atmospheric_profile, observer: Observer
     ) -> np.ndarray:
@@ -541,3 +644,120 @@ def render_scene_to_pil(
     image = Image.fromarray(rgb_8bit, mode="RGB")
 
     return image
+
+
+def render_scene_with_debug(
+    observer: Observer,
+    width: int = 1024,
+    height: int = 512,
+    camera_pitch_deg: float = 15.75,
+) -> Tuple[np.ndarray, dict]:
+    """Render a sunset scene and return intermediate debugging data.
+
+    Args:
+        observer: Observer location and viewing parameters
+        width: Image width in pixels (minimum 1024)
+        height: Image height in pixels (minimum 512)
+        camera_pitch_deg: Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15% from bottom)
+
+    Returns:
+        Tuple of (16-bit RGB image array, dict with intermediate data)
+    """
+    renderer = Renderer(width, height, camera_pitch_deg)
+    return renderer.render_with_debug(observer)
+
+
+def save_debug_visualizations(
+    debug_data: dict,
+    output_dir: str,
+    observer: Observer,
+):
+    """Save intermediate visualizations for debugging.
+
+    Args:
+        debug_data: Dictionary containing intermediate rendering data
+        output_dir: Directory to save visualization images
+        observer: Observer parameters for naming
+    """
+    from pathlib import Path
+
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    body_name = observer.body.name.lower()
+
+    direction_map = debug_data["direction_map"]
+    masks = debug_data["masks"]
+    sky_brightness = debug_data["sky_brightness"]
+    angles_to_sun = debug_data["angles_to_sun"]
+    spectral_radiance = debug_data["spectral_radiance"]
+
+    def normalize_to_uint8(data):
+        min_val = np.min(data)
+        max_val = np.max(data)
+        if max_val > min_val:
+            normalized = ((data - min_val) / (max_val - min_val) * 255).astype(np.uint8)
+        else:
+            normalized = np.zeros_like(data, dtype=np.uint8)
+        return normalized
+
+    direction_mag = np.linalg.norm(direction_map, axis=2)
+    direction_x = normalize_to_uint8(direction_map[:, :, 0])
+    direction_y = normalize_to_uint8(direction_map[:, :, 1])
+    direction_z = normalize_to_uint8(direction_map[:, :, 2])
+    Image.fromarray(direction_x).save(
+        output_path / f"{body_name}_debug_direction_x.png"
+    )
+    Image.fromarray(direction_y).save(
+        output_path / f"{body_name}_debug_direction_y.png"
+    )
+    Image.fromarray(direction_z).save(
+        output_path / f"{body_name}_debug_direction_z.png"
+    )
+
+    sun_mask_vis = masks["sun"].astype(np.uint8) * 255
+    sky_mask_vis = masks["sky"].astype(np.uint8) * 255
+    ground_mask_vis = masks["ground"].astype(np.uint8) * 255
+    glow_mask_vis = masks["glow"].astype(np.uint8) * 255
+
+    Image.fromarray(sun_mask_vis, mode="L").save(
+        output_path / f"{body_name}_debug_mask_sun.png"
+    )
+    Image.fromarray(sky_mask_vis, mode="L").save(
+        output_path / f"{body_name}_debug_mask_sky.png"
+    )
+    Image.fromarray(ground_mask_vis, mode="L").save(
+        output_path / f"{body_name}_debug_mask_ground.png"
+    )
+    Image.fromarray(glow_mask_vis, mode="L").save(
+        output_path / f"{body_name}_debug_mask_glow.png"
+    )
+
+    sky_brightness_vis = normalize_to_uint8(sky_brightness)
+    Image.fromarray(sky_brightness_vis, mode="L").save(
+        output_path / f"{body_name}_debug_sky_brightness.png"
+    )
+
+    angles_to_sun_deg = np.degrees(angles_to_sun)
+    angles_vis = normalize_to_uint8(angles_to_sun_deg)
+    Image.fromarray(angles_vis, mode="L").save(
+        output_path / f"{body_name}_debug_angles_to_sun.png"
+    )
+
+    wavelengths = spectral_radiance.wavelengths
+    radiance = spectral_radiance.radiance
+
+    for i, (wl, rad) in enumerate(zip(wavelengths, radiance)):
+        channel_vis = normalize_to_uint8(np.full((100, 100), rad))
+        rgb_vis = np.stack([channel_vis] * 3, axis=2)
+        Image.fromarray(rgb_vis).save(
+            output_path / f"{body_name}_debug_spectral_{int(wl)}nm.png"
+        )
+
+    spectral_summary = f"Spectral Data Summary:\n"
+    spectral_summary += f"  Wavelengths: {len(wavelengths)} samples from {wavelengths[0]:.1f}nm to {wavelengths[-1]:.1f}nm\n"
+    spectral_summary += f"  Radiance range: [{np.min(radiance):.4e}, {np.max(radiance):.4e}] W·sr⁻¹·m⁻²·nm⁻¹\n"
+    spectral_summary += f"  Skylight contribution: [{np.min(spectral_radiance.skylight_contribution):.4e}, {np.max(spectral_radiance.skylight_contribution):.4e}]\n"
+
+    with open(output_path / f"{body_name}_debug_spectral.txt", "w") as f:
+        f.write(spectral_summary)

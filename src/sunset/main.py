@@ -9,7 +9,11 @@ from itertools import cycle
 from .geometry.resolver import resolve_sunset_location
 from .atmosphere.provider import get_body_profile
 from .visibility.resolver import resolve_visibility_elevation
-from .renderer.engine import render_scene
+from .renderer.engine import (
+    render_scene,
+    render_scene_with_debug,
+    save_debug_visualizations,
+)
 from .caption.generator import generate_caption
 from .metadata.embedder import embed_metadata
 from .models import Observer, SOLAR_SYSTEM_BODIES, Scene
@@ -96,6 +100,11 @@ def parse_args():
         "-v",
         action="store_true",
         help="Print detailed internal state during rendering",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Save intermediate visualizations for debugging (masks, direction vectors, spectral data)",
     )
     return parser.parse_args()
 
@@ -281,6 +290,7 @@ def render_sunset(
     print_caption: bool = False,
     camera_pitch_deg: float = 15.75,
     verbose: bool = False,
+    debug: bool = False,
 ) -> int:
     """Render a sunset scene and save to PNG with embedded metadata.
 
@@ -292,6 +302,7 @@ def render_sunset(
         print_caption: If True, print caption to stdout
         camera_pitch_deg: Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15% from bottom)
         verbose: If True, print detailed internal state during rendering
+        debug: If True, save intermediate visualizations for debugging
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -372,7 +383,15 @@ def render_sunset(
 
             spinner = Spinner("Rendering scene")
             spinner.start()
-            image_array = render_scene(observer, camera_pitch_deg=camera_pitch_deg)
+
+            if debug:
+                image_array, debug_data = render_scene_with_debug(
+                    observer, camera_pitch_deg=camera_pitch_deg
+                )
+            else:
+                image_array = render_scene(observer, camera_pitch_deg=camera_pitch_deg)
+                debug_data = None
+
             spinner.stop()
             print("Rendering complete")
 
@@ -385,6 +404,11 @@ def render_sunset(
             output_file.parent.mkdir(parents=True, exist_ok=True)
 
             embed_metadata(image_array, scene, str(output_file))
+
+            if debug and debug_data is not None:
+                debug_output_dir = output_file.parent / f"{output_file.stem}_debug"
+                save_debug_visualizations(debug_data, str(debug_output_dir), observer)
+                print(f"Debug visualizations saved to: {debug_output_dir}")
 
             if print_caption:
                 caption = generate_caption(scene, atmospheric_profile)
@@ -418,6 +442,7 @@ def main():
         print_caption=args.caption,
         camera_pitch_deg=args.camera_pitch,
         verbose=args.verbose,
+        debug=args.debug,
     )
 
     sys.exit(exit_code)
