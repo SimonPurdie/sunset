@@ -167,9 +167,16 @@ class Renderer:
         for c in range(3):
             rgb_image[~above_horizon_mask, c] = ground_srgb[c]
 
-        sun_srgb = self._compute_sun_color(atmospheric_profile, observer)
-        sun_expanded = np.tile(sun_srgb, (self.height, self.width, 1))
-        rgb_image = np.where(sun_mask[:, :, np.newaxis], sun_expanded, rgb_image)
+        sun_color_with_limb_darkening, sun_glow_mask = (
+            self._compute_sun_with_limb_darkening_and_glow(
+                atmospheric_profile, observer, angles_to_sun, sun_angular_radius
+            )
+        )
+        sun_glow = self._compute_sun_glow(atmospheric_profile, observer, sun_glow_mask)
+        rgb_image = np.where(
+            sun_mask[:, :, np.newaxis], sun_color_with_limb_darkening, rgb_image
+        )
+        rgb_image = rgb_image + sun_glow
 
         rgb_16bit = linear_to_srgb_16bit(rgb_image)
 
@@ -227,6 +234,101 @@ class Renderer:
 
         ground_color = srgb * 0.1
         return np.clip(ground_color, 0.0, 1.0)
+
+    def _compute_sun_with_limb_darkening_and_glow(
+        self,
+        atmospheric_profile,
+        observer: Observer,
+        angles_to_sun: np.ndarray,
+        sun_angular_radius: float,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """Compute sun disc color with limb darkening effect.
+
+        Limb darkening causes the sun to appear darker at the edges because we're looking
+        through cooler outer layers at the limb versus deeper, hotter layers at center.
+
+        Uses simple linear limb darkening law: I(μ) = I₀ * (1 - u * (1 - μ))
+        where μ = cos(θ) with θ being angle between line of sight and surface normal.
+
+        Args:
+            atmospheric_profile: Atmospheric profile for the body
+            observer: Observer parameters
+            angles_to_sun: Array of angles from each pixel to sun center
+            sun_angular_radius: Angular radius of the sun disc in radians
+
+        Returns:
+            Tuple of (sun_color_array with limb darkening, glow_mask for atmospheric glow)
+        """
+        sun_srgb = self._compute_sun_color(atmospheric_profile, observer)
+
+        mu = np.cos(angles_to_sun)
+        limb_darkening_coeff = 0.6
+
+        limb_darkening_factor = np.clip(
+            1.0 - limb_darkening_coeff * (1.0 - mu), 0.0, 1.0
+        )
+
+        sun_color_with_ld = np.zeros((self.height, self.width, 3), dtype=np.float32)
+        for c in range(3):
+            sun_color_with_ld[:, :, c] = sun_srgb[c] * limb_darkening_factor
+
+        glow_extent = sun_angular_radius * 2.5
+        sun_glow_mask = (angles_to_sun > sun_angular_radius) & (
+            angles_to_sun <= glow_extent
+        )
+        glow_distance_factor = (angles_to_sun - sun_angular_radius) / (
+            glow_extent - sun_angular_radius
+        )
+
+        return sun_color_with_ld, sun_glow_mask
+
+    def _compute_sun_glow(
+        self, atmospheric_profile, observer: Observer, glow_mask: np.ndarray
+    ) -> np.ndarray:
+        """Compute atmospheric glow/halo effect around the sun disc.
+
+        Args:
+            atmospheric_profile: Atmospheric profile for the body
+            observer: Observer parameters
+            glow_mask: Boolean mask indicating pixels in glow region
+
+        Returns:
+            RGB array with glow effect (zeros outside glow region)
+        """
+        sun_srgb = self._compute_sun_color(atmospheric_profile, observer)
+
+        glow_color = sun_srgb * 0.3
+        glow = np.zeros((self.height, self.width, 3), dtype=np.float32)
+
+        angles_to_sun = np.arccos(
+            np.clip(
+                np.sum(
+                    self.direction_map
+                    * np.array(observer.sun_direction, dtype=np.float32),
+                    axis=2,
+                ),
+                -1.0,
+                1.0,
+            )
+        )
+
+        sun_angular_radius = math.radians(observer.solar_angular_diameter_deg / 2.0)
+        glow_extent = sun_angular_radius * 2.5
+
+        in_glow_region = (angles_to_sun > sun_angular_radius) & (
+            angles_to_sun <= glow_extent
+        )
+        if np.any(in_glow_region):
+            normalized_distance = (
+                angles_to_sun[in_glow_region] - sun_angular_radius
+            ) / (glow_extent - sun_angular_radius)
+            fade_factor = 1.0 - normalized_distance
+            fade_factor = fade_factor[:, np.newaxis]
+
+            for c in range(3):
+                glow[in_glow_region, c] = glow_color[c] * fade_factor[:, 0]
+
+        return glow
 
     def _compute_sky_brightness_factors(
         self, direction_map: np.ndarray, sun_direction: np.ndarray

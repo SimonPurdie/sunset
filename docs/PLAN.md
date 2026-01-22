@@ -136,6 +136,22 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
 
 ## Priority 2: Nice-to-Have Features
 
+### ~~Sun Disc Improvements~~ (COMPLETED 2026-01-22)
+- **Enhancement:** Added limb darkening and atmospheric glow/halo effects to sun disc
+- **Implementation:**
+  - Implemented `_compute_sun_with_limb_darkening_and_glow()` method using linear limb darkening law: I(μ) = I₀ * (1 - u * (1 - μ))
+    * Limb darkening coefficient u = 0.6 (typical for visible light)
+    * μ = cos(θ) where θ is angle between line of sight and surface normal
+    * Sun appears darker at edges (limb) because we see cooler outer layers vs deeper hotter layers at center
+  - Implemented `_compute_sun_glow()` method for atmospheric halo effect
+    * Glow extends to 2.5× sun angular radius
+    * Glow intensity fades from 30% of sun color at disc edge to 0 at glow boundary
+    * Only applies to atmospheric bodies (airless bodies have no atmosphere for scattering)
+  - Modified `render()` method to use limb-darkened sun and add glow effect
+- **Result:** Sun disc now shows realistic limb darkening with soft atmospheric glow during sunset
+- **Tests:** All 169 tests pass
+- **Physics:** Limb darkening is physically grounded in solar photosphere geometry and atmospheric scattering
+
 ### ~~Camera/Viewing Adjustments~~ (COMPLETED 2026-01-22)
 - **Change:** Camera now tilted upward by 15.75° by default, placing horizon at ~15% from bottom of image
 - **Implementation:**
