@@ -213,6 +213,13 @@ def render_sunset(
             if not validate_scene(scene, observer):
                 return 1
 
+            print(f"Rendering sunset on {observer.body.name}")
+            print(f"  UTC time: {utc_time}")
+            print(f"  Location: {observer.latitude:.6f}°, {observer.longitude:.6f}°")
+            print(f"  Altitude: {final_altitude:.1f} m")
+            print(f"  Solar elevation: {observer.solar_elevation_deg:.3f}°")
+            print()
+
             image_array = render_scene(observer)
 
             if output_path is None:
