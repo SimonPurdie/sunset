@@ -136,9 +136,20 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
 
 ## Priority 2: Nice-to-Have Features
 
-### Camera/Viewing Adjustments
-- Adjust camera angle so horizon appears at ~15% of image height (currently at 50%)
-- Expose camera angle/viewing direction as CLI parameters
+### ~~Camera/Viewing Adjustments~~ (COMPLETED 2026-01-22)
+- **Change:** Camera now tilted upward by 15.75° by default, placing horizon at ~15% from bottom of image
+- **Implementation:**
+  - Added `camera_pitch_deg` parameter to `Renderer.__init__()` with default of 15.75°
+  - Modified `_precompute_direction_vectors()` to apply rotation matrix to camera basis vectors based on pitch angle
+  - Added `--camera-pitch` CLI argument for user customization
+  - Updated `render_scene()` and `render_scene_to_pil()` to accept and pass through camera_pitch_deg
+  - Formula: `camera_pitch = arcsin(horizon_percent_from_bottom * tan(fov_vertical/2))` where horizon_percent_from_bottom = 0.15
+- **Result:** Horizon now appears at approximately 15% from bottom of image (was at 50%), showing more sky area
+- **Tests:** All 169 tests pass
+- **Example usage:**
+  - Default: `sunset-render` (horizon at 15% from bottom)
+  - Custom: `sunset-render --camera-pitch 0` (horizon at center, 50% from bottom)
+  - More upward: `sunset-render --camera-pitch 30` (horizon at ~27% from bottom)
 
 ### Visual Quality Enhancements
 - Sun disc improvements: limb darkening, atmospheric glow/halo effects

@@ -85,6 +85,12 @@ def parse_args():
         action="store_true",
         help="Print caption to stdout",
     )
+    parser.add_argument(
+        "--camera-pitch",
+        type=float,
+        default=15.75,
+        help="Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15%% from bottom)",
+    )
     return parser.parse_args()
 
 
@@ -197,6 +203,7 @@ def render_sunset(
     random_seed: int | None = None,
     output_path: str | None = None,
     print_caption: bool = False,
+    camera_pitch_deg: float = 15.75,
 ) -> int:
     """Render a sunset scene and save to PNG with embedded metadata.
 
@@ -206,6 +213,7 @@ def render_sunset(
         random_seed: Random seed for deterministic output
         output_path: Path to save output PNG (None for auto-generated)
         print_caption: If True, print caption to stdout
+        camera_pitch_deg: Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15% from bottom)
 
     Returns:
         Exit code (0 for success, non-zero for failure)
@@ -283,7 +291,7 @@ def render_sunset(
 
             spinner = Spinner("Rendering scene")
             spinner.start()
-            image_array = render_scene(observer)
+            image_array = render_scene(observer, camera_pitch_deg=camera_pitch_deg)
             spinner.stop()
             print("Rendering complete")
 
@@ -327,6 +335,7 @@ def main():
         random_seed=args.seed,
         output_path=args.output,
         print_caption=args.caption,
+        camera_pitch_deg=args.camera_pitch,
     )
 
     sys.exit(exit_code)

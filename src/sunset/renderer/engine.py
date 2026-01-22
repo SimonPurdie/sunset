@@ -17,12 +17,15 @@ from ..optics.integrator import compute_spectral_radiance
 class Renderer:
     """CPU-only sunset renderer."""
 
-    def __init__(self, width: int = 1024, height: int = 512):
+    def __init__(
+        self, width: int = 1024, height: int = 512, camera_pitch_deg: float = 15.75
+    ):
         """Initialize renderer.
 
         Args:
             width: Image width in pixels (minimum 1024)
             height: Image height in pixels (minimum 512)
+            camera_pitch_deg: Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15% from bottom)
         """
         if width < 1024:
             raise ValueError("Width must be at least 1024 pixels")
@@ -32,6 +35,7 @@ class Renderer:
         self.width = width
         self.height = height
         self.aspect_ratio = width / height
+        self.camera_pitch_deg = camera_pitch_deg
 
         self._precompute_direction_vectors()
 
@@ -43,6 +47,10 @@ class Renderer:
         fov_vertical = 90.0
         fov_vertical_rad = math.radians(fov_vertical)
         tan_half_fov = math.tan(fov_vertical_rad / 2.0)
+
+        pitch_rad = math.radians(self.camera_pitch_deg)
+        cos_pitch = math.cos(pitch_rad)
+        sin_pitch = math.sin(pitch_rad)
 
         x_coords = np.arange(self.width, dtype=np.float32)
         y_coords = np.arange(self.height, dtype=np.float32)
@@ -56,16 +64,45 @@ class Renderer:
         right = np.array([1.0, 0.0, 0.0], dtype=np.float32)
         up = np.array([0.0, 1.0, 0.0], dtype=np.float32)
 
-        dir_x = forward[0] + u * tan_half_fov * self.aspect_ratio * right[0]
+        rotated_forward = np.array(
+            [
+                forward[0],
+                forward[1] * cos_pitch - forward[2] * sin_pitch,
+                forward[1] * sin_pitch + forward[2] * cos_pitch,
+            ],
+            dtype=np.float32,
+        )
+
+        rotated_right = np.array(
+            [
+                right[0],
+                right[1] * cos_pitch - right[2] * sin_pitch,
+                right[1] * sin_pitch + right[2] * cos_pitch,
+            ],
+            dtype=np.float32,
+        )
+
+        rotated_up = np.array(
+            [
+                up[0],
+                up[1] * cos_pitch - up[2] * sin_pitch,
+                up[1] * sin_pitch + up[2] * cos_pitch,
+            ],
+            dtype=np.float32,
+        )
+
+        dir_x = (
+            rotated_forward[0] + u * tan_half_fov * self.aspect_ratio * rotated_right[0]
+        )
         dir_y = (
-            forward[1]
-            + u * tan_half_fov * self.aspect_ratio * right[1]
-            + v * tan_half_fov * up[1]
+            rotated_forward[1]
+            + u * tan_half_fov * self.aspect_ratio * rotated_right[1]
+            + v * tan_half_fov * rotated_up[1]
         )
         dir_z = (
-            forward[2]
-            + u * tan_half_fov * self.aspect_ratio * right[2]
-            + v * tan_half_fov * up[2]
+            rotated_forward[2]
+            + u * tan_half_fov * self.aspect_ratio * rotated_right[2]
+            + v * tan_half_fov * rotated_up[2]
         )
 
         self.direction_map = np.stack([dir_x, dir_y, dir_z], axis=2)
@@ -215,7 +252,10 @@ class Renderer:
 
 
 def render_scene(
-    observer: Observer, width: int = 1024, height: int = 512
+    observer: Observer,
+    width: int = 1024,
+    height: int = 512,
+    camera_pitch_deg: float = 15.75,
 ) -> np.ndarray:
     """Render a sunset scene for the given observer.
 
@@ -223,16 +263,20 @@ def render_scene(
         observer: Observer location and viewing parameters
         width: Image width in pixels (minimum 1024)
         height: Image height in pixels (minimum 512)
+        camera_pitch_deg: Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15% from bottom)
 
     Returns:
         16-bit RGB image array with shape (height, width, 3)
     """
-    renderer = Renderer(width, height)
+    renderer = Renderer(width, height, camera_pitch_deg)
     return renderer.render(observer)
 
 
 def render_scene_to_pil(
-    observer: Observer, width: int = 1024, height: int = 512
+    observer: Observer,
+    width: int = 1024,
+    height: int = 512,
+    camera_pitch_deg: float = 15.75,
 ) -> Image.Image:
     """Render a sunset scene and return as PIL Image.
 
@@ -240,11 +284,12 @@ def render_scene_to_pil(
         observer: Observer location and viewing parameters
         width: Image width in pixels (minimum 1024)
         height: Image height in pixels (minimum 512)
+        camera_pitch_deg: Camera pitch angle in degrees (positive = looking up, default 15.75° for horizon at 15% from bottom)
 
     Returns:
         PIL Image in RGB mode
     """
-    rgb_array = render_scene(observer, width, height)
+    rgb_array = render_scene(observer, width, height, camera_pitch_deg)
 
     rgb_8bit = (rgb_array / 257).astype(np.uint8)
     image = Image.fromarray(rgb_8bit, mode="RGB")
