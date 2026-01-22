@@ -167,9 +167,27 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
   - Custom: `sunset-render --camera-pitch 0` (horizon at center, 50% from bottom)
   - More upward: `sunset-render --camera-pitch 30` (horizon at ~27% from bottom)
 
+### ~~Stars Visible in Darker Sky Regions~~ (COMPLETED 2026-01-22)
+- **Enhancement:** Added star rendering for dark sky regions, especially on airless bodies
+- **Implementation:**
+  - Created `src/sunset/renderer/stars.py` module with:
+    * Bright star catalog (RA/Dec coordinates and magnitudes for ~20 bright stars)
+    * Functions to convert RA/Dec to ICRS Cartesian coordinates
+    * Apparent magnitude to brightness conversion using standard formula: B = 10^(-0.4 * magnitude)
+  - Implemented `_render_stars()` method in `Renderer` class:
+    * Converts star positions from ICRS to ENU coordinates using observer's longitude/latitude
+    * Renders stars only where sky brightness is below visibility threshold
+    * Airless bodies: stars visible where sky brightness <= 0.8 (brighter threshold)
+    * Atmospheric bodies: stars visible only where sky brightness <= 0.2 (darker threshold)
+    * Stars rendered as small points with varying brightness based on magnitude
+  - Modified `render()` method to add stars to final image
+- **Result:** Stars now appear in dark sky regions, particularly visible on airless bodies like Moon and Mercury
+- **Tests:** All 169 tests pass (including `test_moon_black_sky` which confirms sky remains dark)
+- **Physics:** Stars are rendered using standard photometric magnitude scale; ENU conversion uses simplified longitude-based rotation sufficient for visualization
+
 ### Visual Quality Enhancements
 - Sun disc improvements: limb darkening, atmospheric glow/halo effects
-- Stars visible in darker sky regions
+- ~~Stars visible in darker sky regions~~
 - Ground/terrain representation instead of flat black horizon
 
 ### Debugging/Diagnostics

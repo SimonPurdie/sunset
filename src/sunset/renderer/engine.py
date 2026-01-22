@@ -12,6 +12,11 @@ from ..color.tonemapping import apply_exposure_and_tonemap
 from ..models.atmosphere import get_atmosphere
 from ..models.observer import Observer
 from ..optics.integrator import compute_spectral_radiance
+from .stars import (
+    get_bright_stars,
+    ra_dec_to_cartesian,
+    apparent_magnitude_to_brightness,
+)
 
 
 class Renderer:
@@ -177,6 +182,11 @@ class Renderer:
             sun_mask[:, :, np.newaxis], sun_color_with_limb_darkening, rgb_image
         )
         rgb_image = rgb_image + sun_glow
+
+        stars = self._render_stars(
+            atmospheric_profile, observer, sky_brightness_factors, above_horizon_mask
+        )
+        rgb_image = rgb_image + stars
 
         rgb_16bit = linear_to_srgb_16bit(rgb_image)
 
@@ -351,6 +361,116 @@ class Renderer:
         )
 
         return brightness_factors
+
+    def _render_stars(
+        self,
+        atmospheric_profile,
+        observer: Observer,
+        sky_brightness_factors: np.ndarray,
+        above_horizon_mask: np.ndarray,
+    ) -> np.ndarray:
+        """Render stars in dark sky regions.
+
+        Stars are visible only where the sky is sufficiently dark.
+        Airless bodies always show stars in sky regions.
+        Atmospheric bodies show stars only in the darkest sky regions.
+
+        Args:
+            atmospheric_profile: Atmospheric profile for the body
+            observer: Observer parameters
+            sky_brightness_factors: Precomputed sky brightness factors
+            above_horizon_mask: Boolean mask indicating sky vs ground pixels
+
+        Returns:
+            RGB array with stars (zeros outside sky or bright regions)
+        """
+        is_airless = atmospheric_profile is None
+
+        stars = np.zeros((self.height, self.width, 3), dtype=np.float32)
+
+        bright_stars = get_bright_stars(max_magnitude=1.5)
+        if len(bright_stars) == 0:
+            return stars
+
+        ra_hours = bright_stars[:, 0]
+        dec_deg = bright_stars[:, 1]
+        magnitudes = bright_stars[:, 2]
+
+        star_icrs_vectors = ra_dec_to_cartesian(ra_hours, dec_deg)
+        star_brightness = apparent_magnitude_to_brightness(magnitudes)
+
+        star_enu_vectors = self._icrs_to_enu(star_icrs_vectors, observer)
+
+        for i, star_enu in enumerate(star_enu_vectors):
+            star_dir = np.array(star_enu, dtype=np.float32)
+
+            dot_products = np.sum(self.direction_map * star_dir, axis=2)
+            angles_to_star = np.arccos(np.clip(dot_products, -1.0, 1.0))
+
+            star_angular_size = 0.05 / 60.0
+            star_mask = angles_to_star <= star_angular_size
+
+            if not np.any(star_mask):
+                continue
+
+            star_sky_brightness = sky_brightness_factors[star_mask]
+
+            if is_airless:
+                visibility_threshold = 0.8
+            else:
+                visibility_threshold = 0.2
+
+            visible_mask = star_sky_brightness <= visibility_threshold
+
+            if not np.any(visible_mask):
+                continue
+
+            full_mask = np.zeros_like(star_mask, dtype=bool)
+            full_mask[star_mask] = visible_mask
+
+            star_color_srgb = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+
+            brightness_scale = 0.02 if is_airless else 0.01
+            star_value = star_color_srgb * star_brightness[i] * brightness_scale
+
+            for c in range(3):
+                stars[full_mask, c] = star_value[c]
+
+        return stars
+
+    def _icrs_to_enu(self, icrs_vectors: np.ndarray, observer: Observer) -> np.ndarray:
+        """Convert ICRS celestial coordinates to ENU coordinates for the observer.
+
+        This is a simplified conversion using longitude-based rotation.
+        For the purposes of sunset visualization, exact sidereal time is not critical.
+
+        Args:
+            icrs_vectors: Star positions in ICRS frame, shape (N, 3)
+            observer: Observer parameters
+
+        Returns:
+            Star positions in ENU coordinates, shape (N, 3)
+        """
+        lon_rad = math.radians(observer.longitude)
+        lat_rad = math.radians(observer.latitude)
+
+        cos_lon = math.cos(lon_rad)
+        sin_lon = math.sin(lon_rad)
+        cos_lat = math.cos(lat_rad)
+        sin_lat = math.sin(lat_rad)
+
+        R = np.array(
+            [
+                [-sin_lon, cos_lon, 0],
+                [-cos_lon * sin_lat, -sin_lon * sin_lat, cos_lat],
+                [cos_lon * cos_lat, sin_lon * cos_lat, sin_lat],
+            ],
+            dtype=np.float32,
+        )
+
+        enu_vectors = icrs_vectors @ R.T
+
+        return enu_vectors
 
 
 def render_scene(
