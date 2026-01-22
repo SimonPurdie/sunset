@@ -46,10 +46,25 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
 
 ### CLI/UX Enhancements
 
-**Informative Output Before Rendering**
+### ~~Informative Output Before Rendering~~ (COMPLETED 2026-01-22)
 - Print body name being rendered before rendering starts
 - Print relevant metadata (UTC time, location coordinates, altitude, solar elevation)
 - Format should be clear and human-readable
+- **Implementation:** Added print statements in `render_sunset()` before rendering that display:
+  * Body name
+  * UTC time
+  * Location (latitude, longitude)
+  * Altitude
+  * Solar elevation
+- **Tests:** All 169 tests pass
+- **Example output:**
+  ```
+  Rendering sunset on Mars
+    UTC time: 2024-01-15T18:00:00Z
+    Location: 21.214289°, -173.318240°
+    Altitude: 0.0 m
+    Solar elevation: 0.022°
+  ```
 
 **Progress Indication**
 - Display a terminal progress bar during rendering
