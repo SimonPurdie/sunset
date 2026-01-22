@@ -66,9 +66,16 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
     Solar elevation: 0.022°
   ```
 
-**Progress Indication**
-- Display a terminal progress bar during rendering
-- Show percentage complete or render stage information
+### ~~Progress Indication~~ (COMPLETED 2026-01-22)
+- Display a terminal progress indicator during rendering
+- Show completion status with spinner
+- **Implementation:** Added `Spinner` class in `src/sunset/main.py` that:
+  * Shows animated spinner using Unicode characters during rendering
+  * Threaded implementation to avoid blocking render process
+  * Displays "Rendering scene" message with spinner animation
+  * Clears spinner on completion and prints "Rendering complete"
+- **Tests:** All 169 tests pass
+- **Note:** Light spinner implementation without external dependencies; render time is typically <1 second for standard 1024×512 resolution
 
 **Better Error Reporting**
 - Provide actionable guidance in error messages

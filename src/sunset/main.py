@@ -1,7 +1,10 @@
 import argparse
 import sys
+import threading
+import time
 from datetime import datetime
 from pathlib import Path
+from itertools import cycle
 
 from .geometry.resolver import resolve_sunset_location
 from .atmosphere.provider import get_body_profile
@@ -11,6 +14,35 @@ from .caption.generator import generate_caption
 from .metadata.embedder import embed_metadata
 from .models import Observer, SOLAR_SYSTEM_BODIES, Scene
 from . import __version__
+
+
+class Spinner:
+    """Simple terminal spinner for long-running operations."""
+
+    def __init__(self, message: str):
+        self.message = message
+        self._stop_event = threading.Event()
+        self._spinner_thread = None
+        self._chars = cycle(["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
+
+    def _spin(self):
+        while not self._stop_event.is_set():
+            char = next(self._chars)
+            sys.stdout.write(f"\r{self.message} {char} ")
+            sys.stdout.flush()
+            time.sleep(0.1)
+
+    def start(self):
+        self._stop_event.clear()
+        self._spinner_thread = threading.Thread(target=self._spin, daemon=True)
+        self._spinner_thread.start()
+
+    def stop(self):
+        if self._spinner_thread:
+            self._stop_event.set()
+            self._spinner_thread.join()
+            sys.stdout.write("\r" + " " * (len(self.message) + 3) + "\r")
+            sys.stdout.flush()
 
 
 def parse_args():
@@ -220,7 +252,11 @@ def render_sunset(
             print(f"  Solar elevation: {observer.solar_elevation_deg:.3f}°")
             print()
 
+            spinner = Spinner("Rendering scene")
+            spinner.start()
             image_array = render_scene(observer)
+            spinner.stop()
+            print("Rendering complete")
 
             if output_path is None:
                 timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
