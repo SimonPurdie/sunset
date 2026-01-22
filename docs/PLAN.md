@@ -35,10 +35,15 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
   - Updated test `test_parse_args_defaults` to expect `None` instead of `"sunset.png"`
 - **Tests:** All 169 tests pass
 
-### Sky Gradient Visibility
-- **Status:** Test exists and passes (`test_visual_validation_sky_gradient_exists`)
-- **Note:** This item appears stale - the gradient test is passing, suggesting sky gradient is working correctly
-- **Investigation needed:** Verify if actual rendered images show proper sky gradient
+### ~~Sky Gradient Visibility~~ (COMPLETED 2026-01-22)
+- **Issue:** Test exists and passes but rendered images showed incorrect gradient - zenith brighter than horizon during sunset
+- **Root cause:** `_compute_sky_brightness_factors()` used angle from sun, which for a sunset (sun at horizon) created uniform brightness. The function didn't properly model the physical distribution of skylight.
+- **Fix:** Rewrote `_compute_sky_brightness_factors()` to use vertical angle from horizon instead of angle from sun. The new implementation:
+  * Uses cos(vertical_angle) to create gradient where sky is brightest at horizon and darkest at zenith
+  * Creates brightness factor ranging from 0.3 to 1.0 (previously 0.4 to 1.0)
+  * Properly models that during sunset, skylight is brightest near the horizon (closer to sun) and dimmer at zenith
+- **Result:** Sky gradient now properly shows horizon brighter than zenith during sunset
+- **Tests:** All 169 tests pass
 
 ---
 

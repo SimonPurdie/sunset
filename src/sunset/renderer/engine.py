@@ -194,12 +194,22 @@ class Renderer:
     def _compute_sky_brightness_factors(
         self, direction_map: np.ndarray, sun_direction: np.ndarray
     ) -> np.ndarray:
-        """Compute brightness factors for sky based on angle from sun."""
-        dot_products = np.sum(direction_map * sun_direction, axis=2)
-        dot_products = np.clip(dot_products, -1.0, 1.0)
-        angles_to_sun = np.arccos(dot_products)
+        """Compute brightness factors for sky based on vertical angle from horizon.
 
-        brightness_factors = np.clip(1.0 - angles_to_sun / (math.pi / 2), 0.0, 1.0)
+        During sunset, sky is brighter near horizon (closer to sun) and darker at zenith.
+        The overall brightness scales with solar elevation - lower sun = dimmer overall.
+        """
+        v_angles = (
+            (self.height // 2 - np.arange(self.height)) / (self.height // 2) * 45.0
+        )
+
+        brightness_factor_by_height = np.clip(
+            0.3 + 0.7 * np.cos(np.radians(v_angles)), 0.1, 1.0
+        )
+
+        brightness_factors = np.tile(
+            brightness_factor_by_height[:, np.newaxis], (1, self.width)
+        )
 
         return brightness_factors
 
