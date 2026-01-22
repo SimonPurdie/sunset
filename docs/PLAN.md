@@ -188,7 +188,26 @@ These issues prevent the system from meeting the SPEC.md contract or user requir
 ### Visual Quality Enhancements
 - Sun disc improvements: limb darkening, atmospheric glow/halo effects
 - ~~Stars visible in darker sky regions~~
-- Ground/terrain representation instead of flat black horizon
+- ~~Ground/terrain representation instead of flat black horizon~~ (COMPLETED 2026-01-22)
+  - **Enhancement:** Replaced flat ground color with body-specific surface colors and terrain texture
+  - **Implementation:**
+    * Added `ground_color_base` and `ground_color_variation` fields to Body model
+    * Set realistic surface colors for each body:
+      - Mercury: Gray (0.45, 0.43, 0.40)
+      - Venus: Yellowish-orange (0.65, 0.55, 0.35)
+      - Earth: Blue-green/brown (0.2, 0.3, 0.15)
+      - Moon: Gray (0.45, 0.45, 0.45)
+      - Mars: Reddish-orange (0.65, 0.35, 0.20)
+      - Titan: Yellowish-brown (0.55, 0.50, 0.40)
+    * Implemented terrain texture using:
+      - Random noise for variation
+      - Sinusoidal pattern for subtle terrain features
+      - Body-specific variation parameter for texture intensity
+    * Ground illumination scales with atmospheric spectral radiance (0.8 factor)
+    * Deterministic texture generation (fixed random seed)
+  - **Result:** Ground now shows body-specific colors with terrain texture instead of flat color
+  - **Tests:** All 169 tests pass (including updated test_all_bodies_have_required_fields)
+  - **Physics:** Surface colors based on actual planetary surface composition (Mars iron oxide, etc.)
 
 ### Debugging/Diagnostics
 - Intermediate visualization mode: spectral data, direction vectors, masks
